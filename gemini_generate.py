@@ -7,6 +7,8 @@ import google.generativeai as genai
 from dotenv import load_dotenv
 import asyncio
 import uuid
+import json
+from background_remover import background_remove
 
 # Load environment variables from .env file
 load_dotenv()
@@ -134,6 +136,14 @@ def generate_character(description, character_id=None):
                     img = Image.open(BytesIO(img_data))
                     generated_face_path = f"static/assets/{character_id}-face.png"
                     img.save(generated_face_path)
+
+                    # Apply background removal
+                    try:
+                        generated_face_path = background_remove(generated_face_path)
+                        print(f"✓ Background removed from face image")
+                    except Exception as e:
+                        print(f"Warning: Could not remove background from face: {e}")
+
                     results['face'] = generated_face_path
                     print(f"✓ Base character saved to: {generated_face_path}")
                     break
@@ -196,6 +206,15 @@ def generate_character(description, character_id=None):
         # Process results and create flipped versions
         for direction_name, output_path, img in generation_results:
             if output_path and img:
+                # Apply background removal to the generated image
+                try:
+                    output_path = background_remove(output_path)
+                    # Reload the image after background removal for flipping
+                    img = Image.open(output_path)
+                    print(f"✓ Background removed from {direction_name} image")
+                except Exception as e:
+                    print(f"Warning: Could not remove background from {direction_name}: {e}")
+
                 results[direction_name] = output_path
 
                 # Create flipped version for opposite direction
@@ -216,6 +235,28 @@ def generate_character(description, character_id=None):
                     print(f"✓ bot-right view created (flipped from bot-left): {flipped_path}")
 
         results['character_id'] = character_id
+
+        # Save character ID to JSON file
+        characters_file = "static/assets/characters.json"
+        try:
+            # Load existing characters
+            if os.path.exists(characters_file):
+                with open(characters_file, 'r') as f:
+                    characters = json.load(f)
+            else:
+                characters = []
+
+            # Add new character ID if not already present
+            if character_id not in characters:
+                characters.append(character_id)
+
+                # Save updated list
+                with open(characters_file, 'w') as f:
+                    json.dump(characters, f, indent=2)
+                print(f"✓ Character ID saved to {characters_file}")
+        except Exception as e:
+            print(f"Warning: Could not save character ID to JSON: {e}")
+
         return results
 
     except Exception as e:

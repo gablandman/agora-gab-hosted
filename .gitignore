@@ -1,2 +1,7 @@
 *.pyc
 .env
+static/assets/*-bot-left.png
+static/assets/*-bot-right.png
+static/assets/*-top-right.png
+static/assets/*-top-left.png
+static/assets/*-face.png

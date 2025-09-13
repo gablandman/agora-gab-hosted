@@ -15,7 +15,7 @@ class HabboGame {
             targetY: 5,
             moveProgress: 0,
             moveSpeed: 0.15, // Speed of movement animation
-            direction: 4, // 0=SW, 1=NW, 2=NE, 3=SE(front), 4=SE(front-alt), 5=E, 6=NE(back), 7=N(back)
+            direction: 'bot-left', // Starting direction as string
             path: [],
             isMoving: false
         };
@@ -40,6 +40,17 @@ class HabboGame {
         this.spriteHeight = 310;
         this.spriteReady = false;
 
+        // Character sprites
+        this.characterSprites = {
+            face: null,
+            'top-left': null,
+            'top-right': null,
+            'bot-left': null,
+            'bot-right': null
+        };
+        this.selectedCharacterId = null;
+        this.useCustomCharacter = false;
+
         this.speechBubble = {
             text: '',
             timer: null,
@@ -52,11 +63,95 @@ class HabboGame {
         this.init();
     }
 
-    init() {
+    async init() {
+        await this.loadCharacterList();
         this.loadSprite();
         this.setupControls();
         this.startGameLoop();
         this.render();
+    }
+
+    async loadCharacterList() {
+        try {
+            const response = await fetch('/api/characters');
+            const data = await response.json();
+
+            if (data.characters && data.characters.length > 0) {
+                // Create character selector UI
+                this.createCharacterSelector(data.characters);
+            }
+        } catch (error) {
+            console.error('Failed to load character list:', error);
+        }
+    }
+
+    createCharacterSelector(characters) {
+        const select = document.getElementById('characterSelect');
+        if (!select) return;
+
+        // Clear existing options except the default
+        while (select.options.length > 1) {
+            select.remove(1);
+        }
+
+        // Add character options
+        characters.forEach(characterId => {
+            const option = document.createElement('option');
+            option.value = characterId;
+            option.textContent = `Character ${characterId.substring(0, 8)}...`;
+            select.appendChild(option);
+        });
+
+        // Set up the load button
+        const loadBtn = document.getElementById('loadCharacterBtn');
+        if (loadBtn) {
+            loadBtn.onclick = () => this.loadSelectedCharacter();
+        }
+    }
+
+    async loadSelectedCharacter() {
+        const select = document.getElementById('characterSelect');
+        const characterId = select.value;
+
+        if (!characterId) {
+            // Use default sprite
+            this.useCustomCharacter = false;
+            this.spriteReady = true;
+            this.render();
+            return;
+        }
+
+        this.selectedCharacterId = characterId;
+        this.useCustomCharacter = true;
+
+        // Load all character sprites
+        const spritePaths = {
+            face: `/static/assets/${characterId}-face.png`,
+            'top-left': `/static/assets/${characterId}-top-left.png`,
+            'top-right': `/static/assets/${characterId}-top-right.png`,
+            'bot-left': `/static/assets/${characterId}-bot-left.png`,
+            'bot-right': `/static/assets/${characterId}-bot-right.png`
+        };
+
+        let loadedCount = 0;
+        const totalSprites = Object.keys(spritePaths).length;
+
+        for (const [key, path] of Object.entries(spritePaths)) {
+            const img = new Image();
+            img.onload = () => {
+                loadedCount++;
+                if (loadedCount === totalSprites) {
+                    console.log('All character sprites loaded');
+                    this.render();
+                }
+            };
+            img.onerror = () => {
+                console.error(`Failed to load sprite: ${path}`);
+                loadedCount++;
+            };
+            img.src = path;
+            this.characterSprites[key] = img;
+        }
     }
 
     loadSprite() {
@@ -78,6 +173,26 @@ class HabboGame {
             sw: this.spriteWidth,
             sh: this.spriteHeight
         };
+    }
+
+    getCustomSprite(direction) {
+        // If character is speaking, show face sprite
+        if (this.speechBubble.text) {
+            return this.characterSprites['face'];
+        }
+
+        // We only have 5 sprites: face, top-left, top-right, bot-left, bot-right
+        // Direction should already be a string like 'bot-left', 'top-right', etc.
+
+        if (typeof direction === 'string') {
+            // If it's already a valid sprite name, use it
+            if (this.characterSprites[direction]) {
+                return this.characterSprites[direction];
+            }
+        }
+
+        // Default to bot-left if anything goes wrong
+        return this.characterSprites['bot-left'];
     }
 
     setupControls() {
@@ -146,14 +261,46 @@ class HabboGame {
     }
 
     setDirection(dir) {
-        this.player.direction = dir;
-        document.getElementById('currentDirection').textContent = `Current: ${this.directionNames[dir]}`;
+        // We only have 5 sprites: face, top-left, top-right, bot-left, bot-right
+        // Map any input to one of these 5
+        const directionMap = {
+            0: 'bot-left',   // SW
+            1: 'top-left',   // NW
+            2: 'top-right',  // NE
+            3: 'bot-right',  // SE
+            4: 'face'        // Front facing (for when talking)
+        };
+
+        if (typeof dir === 'number') {
+            // Map to one of our 5 sprites, wrapping if needed
+            const mappedDir = dir % 5;
+            this.player.direction = directionMap[mappedDir] || 'bot-left';
+        } else {
+            this.player.direction = dir;
+        }
+
+        // Update UI if the element exists
+        const dirElement = document.getElementById('currentDirection');
+        if (dirElement) {
+            const displayName = typeof dir === 'number' ? this.directionNames[dir] : dir;
+            dirElement.textContent = `Current: ${displayName}`;
+        }
         this.render();
     }
 
     cycleDirection(delta) {
-        this.player.direction = (this.player.direction + delta + 8) % 8;
-        document.getElementById('currentDirection').textContent = `Current: ${this.directionNames[this.player.direction]}`;
+        // Cycle through the four directional sprites
+        const directions = ['bot-left', 'top-left', 'top-right', 'bot-right'];
+        let currentIndex = directions.indexOf(this.player.direction);
+        if (currentIndex === -1) currentIndex = 0;
+
+        currentIndex = (currentIndex + delta + 4) % 4;
+        this.player.direction = directions[currentIndex];
+
+        const dirElement = document.getElementById('currentDirection');
+        if (dirElement) {
+            dirElement.textContent = `Current: ${this.player.direction}`;
+        }
         this.render();
     }
 
@@ -213,26 +360,26 @@ class HabboGame {
         this.player.targetY = nextTile.y;
         this.player.moveProgress = 0;
 
-        // Update direction based on movement
+        // Update direction based on movement - using string-based directions
         const dx = nextTile.x - this.player.x;
         const dy = nextTile.y - this.player.y;
 
         if (dx > 0 && dy === 0) {
-            this.setDirection(4); // SE
+            this.player.direction = 'bot-right'; // Moving right
         } else if (dx < 0 && dy === 0) {
-            this.setDirection(1); // NW
+            this.player.direction = 'top-right'; // Moving left (swapped)
         } else if (dx === 0 && dy > 0) {
-            this.setDirection(0); // SW
+            this.player.direction = 'bot-left'; // Moving down
         } else if (dx === 0 && dy < 0) {
-            this.setDirection(2); // NE
+            this.player.direction = 'top-left'; // Moving up (swapped)
         } else if (dx > 0 && dy > 0) {
-            this.setDirection(4); // SE
+            this.player.direction = 'bot-right'; // Moving down-right
         } else if (dx < 0 && dy < 0) {
-            this.setDirection(2); // NE
+            this.player.direction = 'top-left'; // Moving up-left
         } else if (dx > 0 && dy < 0) {
-            this.setDirection(4); // SE
+            this.player.direction = 'top-right'; // Moving up-right
         } else if (dx < 0 && dy > 0) {
-            this.setDirection(0); // SW
+            this.player.direction = 'bot-left'; // Moving down-left
         }
     }
 
@@ -398,6 +545,23 @@ class HabboGame {
         const newX = Math.floor(this.player.x) + dx;
         const newY = Math.floor(this.player.y) + dy;
 
+        // Set direction based on movement in isometric view
+        // Arrow keys move the character in isometric directions:
+
+        if (dx > 0 && dy === 0) {
+            // Right arrow -> character faces bot-right
+            this.player.direction = 'bot-right';
+        } else if (dx < 0 && dy === 0) {
+            // Left arrow -> character faces top-right (swapped with up)
+            this.player.direction = 'top-right';
+        } else if (dx === 0 && dy < 0) {
+            // Up arrow -> character faces top-left (swapped with left)
+            this.player.direction = 'top-left';
+        } else if (dx === 0 && dy > 0) {
+            // Down arrow -> character faces bot-left
+            this.player.direction = 'bot-left';
+        }
+
         if (newX >= 0 && newX < this.roomWidth && newY >= 0 && newY < this.roomHeight) {
             this.moveToTile(newX, newY);
         }
@@ -427,42 +591,34 @@ class HabboGame {
         this.ctx.stroke();
     }
 
-    drawWalls() {
-        this.ctx.fillStyle = '#D4D4D4';
-        this.ctx.strokeStyle = '#AAAAAA';
-        this.ctx.lineWidth = 1;
+    drawDoor() {
+        // Draw a black door in the middle of the left wall (entrance)
+        const doorHeight = 70;
 
-        const wallHeight = 80;
+        // Position 2 tiles higher (closer to top-left corner)
+        const doorY = Math.floor(this.roomHeight / 2) - 2;
+        const pos1 = this.isoToScreen(0, doorY);
+        const pos2 = this.isoToScreen(0, doorY + 1); // Next tile position for width
 
-        for (let x = 0; x < this.roomWidth; x++) {
-            const pos = this.isoToScreen(x, 0);
+        // Draw door on the left wall - exactly one tile wide along the isometric edge
+        this.ctx.fillStyle = '#000000';
+        this.ctx.strokeStyle = '#333333';
+        this.ctx.lineWidth = 2;
 
-            this.ctx.beginPath();
-            this.ctx.moveTo(pos.x - this.tileWidth/2, pos.y + this.tileHeight/2);
-            this.ctx.lineTo(pos.x, pos.y);
-            this.ctx.lineTo(pos.x, pos.y - wallHeight);
-            this.ctx.lineTo(pos.x - this.tileWidth/2, pos.y - wallHeight + this.tileHeight/2);
-            this.ctx.closePath();
+        // Door positioned flush with the left edge of the tiles
+        this.ctx.beginPath();
+        // Bottom left corner (at tile edge)
+        this.ctx.moveTo(pos1.x - this.tileWidth/2, pos1.y + this.tileHeight/2);
+        // Bottom right corner (one tile down along the wall)
+        this.ctx.lineTo(pos2.x - this.tileWidth/2, pos2.y + this.tileHeight/2);
+        // Top right corner
+        this.ctx.lineTo(pos2.x - this.tileWidth/2, pos2.y + this.tileHeight/2 - doorHeight);
+        // Top left corner
+        this.ctx.lineTo(pos1.x - this.tileWidth/2, pos1.y + this.tileHeight/2 - doorHeight);
+        this.ctx.closePath();
 
-            this.ctx.fill();
-            this.ctx.stroke();
-        }
-
-        this.ctx.fillStyle = '#C8C8C8';
-
-        for (let y = 0; y < this.roomHeight; y++) {
-            const pos = this.isoToScreen(0, y);
-
-            this.ctx.beginPath();
-            this.ctx.moveTo(pos.x - this.tileWidth/2, pos.y + this.tileHeight/2);
-            this.ctx.lineTo(pos.x, pos.y + this.tileHeight);
-            this.ctx.lineTo(pos.x, pos.y + this.tileHeight - wallHeight);
-            this.ctx.lineTo(pos.x - this.tileWidth/2, pos.y + this.tileHeight/2 - wallHeight);
-            this.ctx.closePath();
-
-            this.ctx.fill();
-            this.ctx.stroke();
-        }
+        this.ctx.fill();
+        this.ctx.stroke();
     }
 
     say(message) {
@@ -564,7 +720,24 @@ class HabboGame {
     drawCharacter(x, y) {
         const pos = this.isoToScreen(x, y);
 
-        if (this.spriteReady) {
+        if (this.useCustomCharacter && this.characterSprites.face) {
+            // Use custom character sprites
+            const sprite = this.getCustomSprite(this.player.direction);
+            if (sprite) {
+                const scale = 0.08; // Even smaller scale for custom sprites
+                const drawWidth = sprite.width * scale;
+                const drawHeight = sprite.height * scale;
+
+                this.ctx.drawImage(
+                    sprite,
+                    pos.x - drawWidth / 2,
+                    pos.y - drawHeight + 20,
+                    drawWidth,
+                    drawHeight
+                );
+            }
+        } else if (this.spriteReady) {
+            // Use default sprite sheet
             const sprite = this.getSprite(this.player.direction);
             if (sprite) {
                 const scale = 0.35;
@@ -581,6 +754,7 @@ class HabboGame {
                 );
             }
         } else {
+            // Fallback to simple shape
             const charHeight = 60;
             const charWidth = 20;
 
@@ -616,8 +790,6 @@ class HabboGame {
         this.ctx.fillStyle = '#4A90E2';
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
-        this.drawWalls();
-
         // Draw floor tiles
         for (let y = this.roomHeight - 1; y >= 0; y--) {
             for (let x = this.roomWidth - 1; x >= 0; x--) {
@@ -625,6 +797,9 @@ class HabboGame {
                 this.drawTile(x, y, tileColor);
             }
         }
+
+        // Draw the door entrance
+        this.drawDoor();
 
         // Draw character at interpolated position
         const playerPos = this.getInterpolatedPosition();

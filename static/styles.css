@@ -171,3 +171,59 @@ h1 {
 #sayButton:active {
     transform: translateY(0);
 }
+
+.character-selector {
+    background: #f9f9f9;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    justify-content: center;
+}
+
+.character-selector h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #333;
+}
+
+#characterSelect {
+    width: 200px;
+    padding: 8px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+#characterSelect:focus {
+    outline: none;
+    border-color: #4A90E2;
+}
+
+#loadCharacterBtn {
+    padding: 8px 16px;
+    background: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+#loadCharacterBtn:hover {
+    background: #45a049;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+#loadCharacterBtn:active {
+    transform: translateY(0);
+}

@@ -1,5 +1,6 @@
-# save as detour_unified_bg.py
-import cv2, numpy as np, pathlib, sys
+import cv2
+import numpy as np
+import pathlib
 
 def _estimate_bg_lab(img_bgr, border=20):
     """Estimate background color from image borders (median in LAB)."""
@@ -16,8 +17,8 @@ def _estimate_bg_lab(img_bgr, border=20):
     median = np.median(samples, axis=0)
     return median  # LAB median
 
-def detour_unified_bg(path, out_path=None, bg_percentile=96, margin=8.0,
-                      grabcut_iters=5, feather_sigma=1.5, border_px=20):
+def background_remove(path, out_path=None, bg_percentile=95, margin=8.0,
+                     grabcut_iters=5, feather_sigma=1.5, border_px=20):
     """
     Remove near-flat background with small variance.
 
@@ -76,11 +77,3 @@ def detour_unified_bg(path, out_path=None, bg_percentile=96, margin=8.0,
     out_path = out_path or str(pathlib.Path(path).with_suffix(".png"))
     cv2.imwrite(out_path, bgra)
     return out_path
-
-if __name__ == "__main__":
-    paths = sys.argv[1:]
-    if not paths:
-        print("Usage:\n  python detour_unified_bg.py IMG1 [IMG2 ...]\n\nTips:\n  - If the subject leaks, increase 'margin' or lower 'bg_percentile'.\n  - Jagged edges? Increase 'feather_sigma' (e.g. 2.0–3.0).")
-        raise SystemExit(1)
-    for p in paths:
-        print(detour_unified_bg(p))
