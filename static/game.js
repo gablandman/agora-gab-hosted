@@ -51,11 +51,9 @@ class HabboGame {
         this.selectedCharacterId = null;
         this.useCustomCharacter = false;
 
-        this.speechBubble = {
-            text: '',
-            timer: null,
-            duration: 5000 // 5 seconds
-        };
+        this.speechBubbles = []; // Array to store multiple speech bubbles
+        this.maxBubbles = 5; // Maximum number of bubbles to display
+        this.bubbleDuration = 5000; // 5 seconds per bubble
 
         this.obstacles = []; // Array to store obstacles if needed
         this.animationFrame = null;
@@ -177,8 +175,8 @@ class HabboGame {
     }
 
     getCustomSprite(direction) {
-        // If character is speaking, show face sprite
-        if (this.speechBubble.text) {
+        // If character is speaking (has active bubbles), show face sprite
+        if (this.speechBubbles.length > 0) {
             return this.characterSprites['face'];
         }
 
@@ -614,99 +612,148 @@ class HabboGame {
     }
 
     say(message) {
-        this.speechBubble.text = message;
+        // Add new message to the array
+        const newBubble = {
+            text: message,
+            timestamp: Date.now(),
+            opacity: 1
+        };
 
-        // Clear existing timer
-        if (this.speechBubble.timer) {
-            clearTimeout(this.speechBubble.timer);
+        this.speechBubbles.unshift(newBubble); // Add to beginning of array
+
+        // Limit the number of bubbles
+        if (this.speechBubbles.length > this.maxBubbles) {
+            this.speechBubbles = this.speechBubbles.slice(0, this.maxBubbles);
         }
 
-        // Set timer to clear bubble after duration
-        this.speechBubble.timer = setTimeout(() => {
-            this.speechBubble.text = '';
-            this.render();
-        }, this.speechBubble.duration);
+        // Set timer to remove this bubble after duration
+        setTimeout(() => {
+            const index = this.speechBubbles.indexOf(newBubble);
+            if (index > -1) {
+                this.speechBubbles.splice(index, 1);
+                this.render();
+            }
+        }, this.bubbleDuration);
 
         this.render();
     }
 
-    drawSpeechBubble(x, y) {
-        if (!this.speechBubble.text) return;
+    drawSpeechBubbles(x, y) {
+        if (this.speechBubbles.length === 0) return;
 
         const pos = this.isoToScreen(x, y);
-        const bubbleY = pos.y - 120; // Position above character
         const padding = 10;
         const maxWidth = 200;
-
-        // Set font and measure text
-        this.ctx.font = '14px Arial';
-        const words = this.speechBubble.text.split(' ');
-        const lines = [];
-        let currentLine = '';
-
-        // Word wrap
-        for (const word of words) {
-            const testLine = currentLine ? `${currentLine} ${word}` : word;
-            const metrics = this.ctx.measureText(testLine);
-
-            if (metrics.width > maxWidth && currentLine) {
-                lines.push(currentLine);
-                currentLine = word;
-            } else {
-                currentLine = testLine;
-            }
-        }
-        lines.push(currentLine);
-
-        // Calculate bubble dimensions
         const lineHeight = 18;
-        const bubbleHeight = lines.length * lineHeight + padding * 2;
-        let bubbleWidth = 0;
-
-        for (const line of lines) {
-            const metrics = this.ctx.measureText(line);
-            bubbleWidth = Math.max(bubbleWidth, metrics.width);
-        }
-        bubbleWidth += padding * 2;
-
-        // Draw bubble background
-        this.ctx.fillStyle = 'white';
-        this.ctx.strokeStyle = '#333';
-        this.ctx.lineWidth = 2;
-
-        // Bubble with rounded corners
+        const bubbleSpacing = 5;
         const radius = 10;
-        const bubbleX = pos.x - bubbleWidth / 2;
 
-        this.ctx.beginPath();
-        this.ctx.moveTo(bubbleX + radius, bubbleY);
-        this.ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY);
-        this.ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + radius);
-        this.ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - radius);
-        this.ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - radius, bubbleY + bubbleHeight);
+        // Calculate total height and process bubbles
+        let totalHeight = 0;
+        const bubblesData = [];
 
-        // Tail pointing to character
-        this.ctx.lineTo(pos.x + 10, bubbleY + bubbleHeight);
-        this.ctx.lineTo(pos.x, bubbleY + bubbleHeight + 10);
-        this.ctx.lineTo(pos.x - 10, bubbleY + bubbleHeight);
+        this.speechBubbles.forEach((bubble) => {
+            this.ctx.font = '14px Arial';
+            const words = bubble.text.split(' ');
+            const lines = [];
+            let currentLine = '';
 
-        this.ctx.lineTo(bubbleX + radius, bubbleY + bubbleHeight);
-        this.ctx.quadraticCurveTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - radius);
-        this.ctx.lineTo(bubbleX, bubbleY + radius);
-        this.ctx.quadraticCurveTo(bubbleX, bubbleY, bubbleX + radius, bubbleY);
-        this.ctx.closePath();
+            // Word wrap
+            for (const word of words) {
+                const testLine = currentLine ? `${currentLine} ${word}` : word;
+                const metrics = this.ctx.measureText(testLine);
 
-        this.ctx.fill();
-        this.ctx.stroke();
+                if (metrics.width > maxWidth && currentLine) {
+                    lines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            lines.push(currentLine);
 
-        // Draw text
-        this.ctx.fillStyle = '#333';
-        this.ctx.font = '14px Arial';
-        lines.forEach((line, index) => {
-            const textX = pos.x - this.ctx.measureText(line).width / 2;
-            const textY = bubbleY + padding + (index + 1) * lineHeight - 2;
-            this.ctx.fillText(line, textX, textY);
+            // Calculate bubble dimensions
+            const bubbleHeight = lines.length * lineHeight + padding * 2;
+            let bubbleWidth = 0;
+
+            for (const line of lines) {
+                const metrics = this.ctx.measureText(line);
+                bubbleWidth = Math.max(bubbleWidth, metrics.width);
+            }
+            bubbleWidth += padding * 2;
+
+            bubblesData.push({
+                bubble: bubble,
+                lines: lines,
+                width: bubbleWidth,
+                height: bubbleHeight
+            });
+
+            totalHeight += bubbleHeight + bubbleSpacing;
         });
+
+        // Draw bubbles from oldest (top) to newest (bottom)
+        let currentY = pos.y - 120 - totalHeight;
+
+        bubblesData.reverse().forEach((data, index) => {
+            const { bubble, lines, width: bubbleWidth, height: bubbleHeight } = data;
+
+            // Calculate fade
+            const age = Date.now() - bubble.timestamp;
+            const fadeStart = this.bubbleDuration - 1000;
+            let opacity = 1;
+            if (age > fadeStart) {
+                opacity = Math.max(0, 1 - ((age - fadeStart) / 1000));
+            }
+
+            const bubbleX = pos.x - bubbleWidth / 2;
+            const bubbleY = currentY;
+
+            this.ctx.globalAlpha = opacity;
+
+            // Draw bubble background
+            this.ctx.fillStyle = 'white';
+            this.ctx.strokeStyle = '#333';
+            this.ctx.lineWidth = 2;
+
+            // Bubble with rounded corners
+            this.ctx.beginPath();
+            this.ctx.moveTo(bubbleX + radius, bubbleY);
+            this.ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY);
+            this.ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + radius);
+            this.ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - radius);
+            this.ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - radius, bubbleY + bubbleHeight);
+
+            // Only draw tail for newest bubble
+            if (index === bubblesData.length - 1) {
+                this.ctx.lineTo(pos.x + 10, bubbleY + bubbleHeight);
+                this.ctx.lineTo(pos.x, bubbleY + bubbleHeight + 10);
+                this.ctx.lineTo(pos.x - 10, bubbleY + bubbleHeight);
+            }
+
+            this.ctx.lineTo(bubbleX + radius, bubbleY + bubbleHeight);
+            this.ctx.quadraticCurveTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - radius);
+            this.ctx.lineTo(bubbleX, bubbleY + radius);
+            this.ctx.quadraticCurveTo(bubbleX, bubbleY, bubbleX + radius, bubbleY);
+            this.ctx.closePath();
+
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Draw text
+            this.ctx.fillStyle = '#333';
+            this.ctx.font = '14px Arial';
+            lines.forEach((line, lineIndex) => {
+                const textX = bubbleX + padding;
+                const textY = bubbleY + padding + (lineIndex + 1) * lineHeight - 2;
+                this.ctx.fillText(line, textX, textY);
+            });
+
+            currentY += bubbleHeight + bubbleSpacing;
+        });
+
+        // Reset global alpha
+        this.ctx.globalAlpha = 1;
     }
 
     drawCharacter(x, y) {
@@ -796,7 +843,7 @@ class HabboGame {
         // Draw character at interpolated position
         const playerPos = this.getInterpolatedPosition();
         this.drawCharacter(playerPos.x, playerPos.y);
-        this.drawSpeechBubble(playerPos.x, playerPos.y);
+        this.drawSpeechBubbles(playerPos.x, playerPos.y);
     }
 }
 
