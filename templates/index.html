@@ -22,6 +22,17 @@
                 <button id="sayButton">Say</button>
             </div>
         </div>
+        <div class="test-controls" style="margin-top: 20px; padding: 10px; background: #f5f5f5; border-radius: 8px;">
+            <h3>Test NPC Actions</h3>
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; justify-content: center;">
+                <button onclick="testNPCAction('say')" class="test-btn">Test Say</button>
+                <button onclick="testNPCAction('speak_to')" class="test-btn">Test Speak To</button>
+                <button onclick="testNPCAction('move')" class="test-btn">Test Move</button>
+                <button onclick="testNPCAction('enter')" class="test-btn">Test Enter</button>
+                <button onclick="testNPCAction('leave')" class="test-btn">Test Leave</button>
+                <button onclick="testNPCAction('nothing')" class="test-btn">Test Nothing</button>
+            </div>
+        </div>
     </div>
     <script src="/static/game.js"></script>
 </body>

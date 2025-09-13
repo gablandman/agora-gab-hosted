@@ -26,3 +26,17 @@ async def get_characters():
         return JSONResponse(content={"characters": characters})
     else:
         return JSONResponse(content={"characters": []})
+
+@app.get("/state")
+async def get_state():
+    """Get the current state with character actions"""
+    # For now, return the example state
+    state_file = "state-example.json"
+
+    if os.path.exists(state_file):
+        with open(state_file, 'r') as f:
+            state = json.load(f)
+        return JSONResponse(content=state)
+    else:
+        # Return empty state if file doesn't exist
+        return JSONResponse(content={"characters": {}})

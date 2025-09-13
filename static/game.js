@@ -58,6 +58,12 @@ class HabboGame {
         this.obstacles = []; // Array to store obstacles if needed
         this.animationFrame = null;
 
+        // NPC system
+        this.npcs = {}; // Store NPC characters by ID
+        this.statePollingInterval = null;
+        this.lastProcessedState = null;
+        this.actionDelay = 500; // 0.5 seconds between character actions
+
         this.init();
     }
 
@@ -66,6 +72,340 @@ class HabboGame {
         this.loadSprite();
         this.setupControls();
         this.startGameLoop();
+        this.startStatePolling();
+        this.render();
+    }
+
+    startStatePolling() {
+        // Poll state every 5 seconds
+        this.fetchAndProcessState(); // Initial fetch
+        this.statePollingInterval = setInterval(() => {
+            this.fetchAndProcessState();
+        }, 5000);
+    }
+
+    async fetchAndProcessState() {
+        try {
+            const response = await fetch('/state');
+            const state = await response.json();
+
+            if (state.characters) {
+                await this.processStateUpdate(state.characters);
+            }
+        } catch (error) {
+            console.error('Failed to fetch state:', error);
+        }
+    }
+
+    async processStateUpdate(characters) {
+        const actionsToExecute = [];
+
+        // Process each character
+        for (const [charId, charData] of Object.entries(characters)) {
+            // Create NPC if it doesn't exist
+            if (!this.npcs[charId]) {
+                this.createNPC(charId, charData.name);
+            }
+
+            // Get the last action (if any)
+            if (charData.actions && charData.actions.length > 0) {
+                const lastAction = charData.actions[charData.actions.length - 1];
+                actionsToExecute.push({
+                    charId,
+                    action: lastAction,
+                    name: charData.name
+                });
+            }
+        }
+
+        // Execute actions with delay between them
+        for (let i = 0; i < actionsToExecute.length; i++) {
+            const { charId, action } = actionsToExecute[i];
+            await this.executeAction(charId, action);
+
+            // Add delay before next character's action (except for last one)
+            if (i < actionsToExecute.length - 1) {
+                await new Promise(resolve => setTimeout(resolve, this.actionDelay));
+            }
+        }
+    }
+
+    createNPC(charId, name) {
+        // Pick a random starting position
+        const x = Math.floor(Math.random() * this.roomWidth);
+        const y = Math.floor(Math.random() * this.roomHeight);
+
+        this.npcs[charId] = {
+            id: charId,
+            name: name,
+            x: x,
+            y: y,
+            targetX: x,
+            targetY: y,
+            moveProgress: 0,
+            moveSpeed: 0.15,
+            direction: 'bot-left',
+            path: [],
+            isMoving: false,
+            visible: true,
+            speechBubbles: [],
+            sprites: null // Will be loaded if needed
+        };
+
+        console.log(`Created NPC ${name} at position (${x}, ${y})`);
+    }
+
+    async executeAction(charId, action) {
+        const npc = this.npcs[charId];
+        if (!npc) return;
+
+        console.log(`Executing action for ${npc.name}: ${action.type}`);
+
+        switch (action.type) {
+            case 'say':
+                await this.npcSay(charId, action.content);
+                break;
+            case 'speak_to':
+                await this.npcSpeakTo(charId, action.target, action.content);
+                break;
+            case 'leave':
+                await this.npcLeave(charId, action.content);
+                break;
+            case 'enter':
+                await this.npcEnter(charId, action.content);
+                break;
+            case 'move':
+                await this.npcMove(charId);
+                break;
+            case 'nothing':
+                // No operation
+                break;
+        }
+    }
+
+    async npcSay(charId, content) {
+        const npc = this.npcs[charId];
+        if (!npc || !content) return;
+
+        // Face forward (use face sprite direction)
+        npc.direction = 'face';
+
+        // Add speech bubble
+        this.addNPCSpeechBubble(charId, content);
+
+        // Wait for speech duration
+        await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    async npcSpeakTo(charId, targetId, content) {
+        const npc = this.npcs[charId];
+        const target = this.npcs[targetId];
+
+        if (!npc || !target) return;
+
+        // Find adjacent free tile to target
+        const adjacentTiles = this.getAdjacentTiles(target.x, target.y);
+        const freeTile = adjacentTiles.find(tile => this.isTileFree(tile.x, tile.y));
+
+        if (freeTile) {
+            // Move to adjacent tile
+            await this.moveNPCTo(charId, freeTile.x, freeTile.y);
+
+            // Face the target
+            this.faceTowards(npc, target);
+
+            // Say the content
+            if (content) {
+                this.addNPCSpeechBubble(charId, content);
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+        }
+    }
+
+    async npcLeave(charId, content) {
+        const npc = this.npcs[charId];
+        if (!npc) return;
+
+        // Say goodbye message if provided
+        if (content) {
+            this.addNPCSpeechBubble(charId, content);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
+        // Move to door position (near 0, 3 based on door location)
+        await this.moveNPCTo(charId, 0, 3);
+
+        // Make character disappear
+        npc.visible = false;
+        this.render();
+    }
+
+    async npcEnter(charId, content) {
+        const npc = this.npcs[charId];
+        if (!npc) return;
+
+        // Position at door
+        npc.x = 0;
+        npc.y = 3;
+        npc.visible = true;
+
+        // Say entrance message if provided
+        if (content) {
+            this.addNPCSpeechBubble(charId, content);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+
+        // Move into room
+        await this.npcMove(charId);
+    }
+
+    async npcMove(charId) {
+        const npc = this.npcs[charId];
+        if (!npc) return;
+
+        // Find random free tile
+        let attempts = 0;
+        let targetX, targetY;
+
+        do {
+            targetX = Math.floor(Math.random() * this.roomWidth);
+            targetY = Math.floor(Math.random() * this.roomHeight);
+            attempts++;
+        } while (!this.isTileFree(targetX, targetY) && attempts < 20);
+
+        if (attempts < 20) {
+            await this.moveNPCTo(charId, targetX, targetY);
+        }
+    }
+
+    async moveNPCTo(charId, targetX, targetY) {
+        const npc = this.npcs[charId];
+        if (!npc) return;
+
+        // Use pathfinding
+        const path = this.findPath(
+            Math.floor(npc.x),
+            Math.floor(npc.y),
+            targetX,
+            targetY
+        );
+
+        if (path && path.length > 0) {
+            // Animate movement along path
+            for (const tile of path) {
+                npc.targetX = tile.x;
+                npc.targetY = tile.y;
+
+                // Update direction based on movement
+                const dx = tile.x - npc.x;
+                const dy = tile.y - npc.y;
+                this.updateNPCDirection(npc, dx, dy);
+
+                // Animate to this tile
+                await this.animateNPCMovement(charId);
+
+                npc.x = tile.x;
+                npc.y = tile.y;
+            }
+        }
+    }
+
+    async animateNPCMovement(charId) {
+        const npc = this.npcs[charId];
+        if (!npc) return;
+
+        return new Promise(resolve => {
+            const animateStep = () => {
+                npc.moveProgress += npc.moveSpeed;
+
+                if (npc.moveProgress >= 1) {
+                    npc.moveProgress = 0;
+                    resolve();
+                } else {
+                    requestAnimationFrame(animateStep);
+                }
+
+                this.render();
+            };
+
+            animateStep();
+        });
+    }
+
+    updateNPCDirection(npc, dx, dy) {
+        if (dx > 0 && dy === 0) {
+            npc.direction = 'bot-right';
+        } else if (dx < 0 && dy === 0) {
+            npc.direction = 'top-right';
+        } else if (dx === 0 && dy < 0) {
+            npc.direction = 'top-left';
+        } else if (dx === 0 && dy > 0) {
+            npc.direction = 'bot-left';
+        }
+    }
+
+    faceTowards(npc, target) {
+        const dx = target.x - npc.x;
+        const dy = target.y - npc.y;
+
+        if (Math.abs(dx) > Math.abs(dy)) {
+            npc.direction = dx > 0 ? 'bot-right' : 'top-right';
+        } else {
+            npc.direction = dy > 0 ? 'bot-left' : 'top-left';
+        }
+    }
+
+    getAdjacentTiles(x, y) {
+        return [
+            { x: x - 1, y: y },
+            { x: x + 1, y: y },
+            { x: x, y: y - 1 },
+            { x: x, y: y + 1 }
+        ].filter(tile =>
+            tile.x >= 0 && tile.x < this.roomWidth &&
+            tile.y >= 0 && tile.y < this.roomHeight
+        );
+    }
+
+    isTileFree(x, y) {
+        // Check if tile is occupied by player or other NPCs
+        if (Math.floor(this.player.x) === x && Math.floor(this.player.y) === y) {
+            return false;
+        }
+
+        for (const npc of Object.values(this.npcs)) {
+            if (npc.visible && Math.floor(npc.x) === x && Math.floor(npc.y) === y) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    addNPCSpeechBubble(charId, text) {
+        const npc = this.npcs[charId];
+        if (!npc) return;
+
+        const bubble = {
+            text: text,
+            timestamp: Date.now(),
+            opacity: 1
+        };
+
+        npc.speechBubbles.unshift(bubble);
+
+        if (npc.speechBubbles.length > this.maxBubbles) {
+            npc.speechBubbles = npc.speechBubbles.slice(0, this.maxBubbles);
+        }
+
+        setTimeout(() => {
+            const index = npc.speechBubbles.indexOf(bubble);
+            if (index > -1) {
+                npc.speechBubbles.splice(index, 1);
+                this.render();
+            }
+        }, this.bubbleDuration);
+
         this.render();
     }
 
@@ -507,6 +847,166 @@ class HabboGame {
         }
     }
 
+    getNPCInterpolatedPosition(npc) {
+        if (npc.moveProgress > 0 && npc.moveProgress < 1) {
+            const smoothProgress = this.easeInOutQuad(npc.moveProgress);
+            const currentX = npc.x + (npc.targetX - npc.x) * smoothProgress;
+            const currentY = npc.y + (npc.targetY - npc.y) * smoothProgress;
+            return { x: currentX, y: currentY };
+        }
+        return { x: npc.x, y: npc.y };
+    }
+
+    drawNPC(npc, x, y) {
+        const pos = this.isoToScreen(x, y);
+
+        // For now, draw NPCs as simple colored circles
+        // Later we can load specific sprites for each NPC
+        const charHeight = 60;
+        const charWidth = 20;
+
+        // Different colors for different NPCs
+        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+        const colorIndex = Math.abs(npc.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % colors.length;
+
+        // Shadow
+        this.ctx.fillStyle = '#333333';
+        this.ctx.beginPath();
+        this.ctx.ellipse(pos.x, pos.y - 5, charWidth/2, 8, 0, 0, Math.PI * 2);
+        this.ctx.fill();
+
+        // Body
+        this.ctx.fillStyle = colors[colorIndex];
+        this.ctx.fillRect(pos.x - charWidth/2, pos.y - charHeight, charWidth, charHeight - 10);
+
+        // Head
+        this.ctx.fillStyle = '#FFD4A3';
+        this.ctx.strokeStyle = '#333333';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.arc(pos.x, pos.y - charHeight, 12, 0, Math.PI * 2);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        // Name label
+        this.ctx.fillStyle = '#333333';
+        this.ctx.font = '12px Arial';
+        this.ctx.textAlign = 'center';
+        this.ctx.fillText(npc.name, pos.x, pos.y - charHeight - 20);
+        this.ctx.textAlign = 'left';
+    }
+
+    drawNPCSpeechBubbles(npc, x, y) {
+        if (npc.speechBubbles.length === 0) return;
+
+        const pos = this.isoToScreen(x, y);
+        const padding = 10;
+        const maxWidth = 200;
+        const lineHeight = 18;
+        const bubbleSpacing = 5;
+        const radius = 10;
+
+        // Similar to player speech bubbles but for NPCs
+        let totalHeight = 0;
+        const bubblesData = [];
+
+        npc.speechBubbles.forEach((bubble) => {
+            this.ctx.font = '14px Arial';
+            const words = bubble.text.split(' ');
+            const lines = [];
+            let currentLine = '';
+
+            for (const word of words) {
+                const testLine = currentLine ? `${currentLine} ${word}` : word;
+                const metrics = this.ctx.measureText(testLine);
+
+                if (metrics.width > maxWidth && currentLine) {
+                    lines.push(currentLine);
+                    currentLine = word;
+                } else {
+                    currentLine = testLine;
+                }
+            }
+            lines.push(currentLine);
+
+            const bubbleHeight = lines.length * lineHeight + padding * 2;
+            let bubbleWidth = 0;
+
+            for (const line of lines) {
+                const metrics = this.ctx.measureText(line);
+                bubbleWidth = Math.max(bubbleWidth, metrics.width);
+            }
+            bubbleWidth += padding * 2;
+
+            bubblesData.push({
+                bubble: bubble,
+                lines: lines,
+                width: bubbleWidth,
+                height: bubbleHeight
+            });
+
+            totalHeight += bubbleHeight + bubbleSpacing;
+        });
+
+        let currentY = pos.y - 120 - totalHeight;
+
+        bubblesData.reverse().forEach((data, index) => {
+            const { bubble, lines, width: bubbleWidth, height: bubbleHeight } = data;
+
+            const age = Date.now() - bubble.timestamp;
+            const fadeStart = this.bubbleDuration - 1000;
+            let opacity = 1;
+            if (age > fadeStart) {
+                opacity = Math.max(0, 1 - ((age - fadeStart) / 1000));
+            }
+
+            const bubbleX = pos.x - bubbleWidth / 2;
+            const bubbleY = currentY;
+
+            this.ctx.globalAlpha = opacity;
+
+            // Draw bubble background
+            this.ctx.fillStyle = 'white';
+            this.ctx.strokeStyle = '#333';
+            this.ctx.lineWidth = 2;
+
+            this.ctx.beginPath();
+            this.ctx.moveTo(bubbleX + radius, bubbleY);
+            this.ctx.lineTo(bubbleX + bubbleWidth - radius, bubbleY);
+            this.ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY, bubbleX + bubbleWidth, bubbleY + radius);
+            this.ctx.lineTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight - radius);
+            this.ctx.quadraticCurveTo(bubbleX + bubbleWidth, bubbleY + bubbleHeight, bubbleX + bubbleWidth - radius, bubbleY + bubbleHeight);
+
+            if (index === bubblesData.length - 1) {
+                this.ctx.lineTo(pos.x + 10, bubbleY + bubbleHeight);
+                this.ctx.lineTo(pos.x, bubbleY + bubbleHeight + 10);
+                this.ctx.lineTo(pos.x - 10, bubbleY + bubbleHeight);
+            }
+
+            this.ctx.lineTo(bubbleX + radius, bubbleY + bubbleHeight);
+            this.ctx.quadraticCurveTo(bubbleX, bubbleY + bubbleHeight, bubbleX, bubbleY + bubbleHeight - radius);
+            this.ctx.lineTo(bubbleX, bubbleY + radius);
+            this.ctx.quadraticCurveTo(bubbleX, bubbleY, bubbleX + radius, bubbleY);
+            this.ctx.closePath();
+
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Draw text
+            this.ctx.fillStyle = '#333';
+            this.ctx.font = '14px Arial';
+            lines.forEach((line, lineIndex) => {
+                const textX = bubbleX + padding;
+                const textY = bubbleY + padding + (lineIndex + 1) * lineHeight - 2;
+                this.ctx.fillText(line, textX, textY);
+            });
+
+            currentY += bubbleHeight + bubbleSpacing;
+        });
+
+        this.ctx.globalAlpha = 1;
+    }
+
     getInterpolatedPosition() {
         if (!this.player.isMoving) {
             return { x: this.player.x, y: this.player.y };
@@ -840,13 +1340,86 @@ class HabboGame {
         // Draw the door entrance
         this.drawDoor();
 
-        // Draw character at interpolated position
+        // Draw all NPCs
+        for (const npc of Object.values(this.npcs)) {
+            if (npc.visible) {
+                const npcPos = this.getNPCInterpolatedPosition(npc);
+                this.drawNPC(npc, npcPos.x, npcPos.y);
+                this.drawNPCSpeechBubbles(npc, npcPos.x, npcPos.y);
+            }
+        }
+
+        // Draw player character at interpolated position
         const playerPos = this.getInterpolatedPosition();
         this.drawCharacter(playerPos.x, playerPos.y);
         this.drawSpeechBubbles(playerPos.x, playerPos.y);
     }
 }
 
+let gameInstance = null;
+
 document.addEventListener('DOMContentLoaded', () => {
-    new HabboGame();
+    gameInstance = new HabboGame();
 });
+
+// Test function for buttons
+function testNPCAction(actionType) {
+    if (!gameInstance) return;
+
+    // Create test NPCs if they don't exist
+    if (!gameInstance.npcs['test-npc-1']) {
+        gameInstance.createNPC('test-npc-1', 'TestBot1');
+    }
+    if (!gameInstance.npcs['test-npc-2']) {
+        gameInstance.createNPC('test-npc-2', 'TestBot2');
+    }
+
+    // Execute action based on type
+    switch(actionType) {
+        case 'say':
+            gameInstance.executeAction('test-npc-1', {
+                type: 'say',
+                content: 'Hello, I am a test NPC!'
+            });
+            break;
+
+        case 'speak_to':
+            gameInstance.executeAction('test-npc-1', {
+                type: 'speak_to',
+                target: 'test-npc-2',
+                content: 'Hey TestBot2, how are you?'
+            });
+            break;
+
+        case 'move':
+            gameInstance.executeAction('test-npc-1', {
+                type: 'move'
+            });
+            break;
+
+        case 'enter':
+            // Hide NPC first if visible
+            if (gameInstance.npcs['test-npc-1']) {
+                gameInstance.npcs['test-npc-1'].visible = false;
+            }
+            gameInstance.executeAction('test-npc-1', {
+                type: 'enter',
+                content: 'Hello everyone, I just arrived!'
+            });
+            break;
+
+        case 'leave':
+            gameInstance.executeAction('test-npc-1', {
+                type: 'leave',
+                content: 'Goodbye everyone!'
+            });
+            break;
+
+        case 'nothing':
+            gameInstance.executeAction('test-npc-1', {
+                type: 'nothing'
+            });
+            console.log('Nothing action executed (no visible effect)');
+            break;
+    }
+}
