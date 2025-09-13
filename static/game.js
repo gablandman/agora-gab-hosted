@@ -219,7 +219,8 @@ class HabboGame {
         const npc = this.npcs[charId];
         if (!npc || !content) return;
 
-        // Face forward (use face sprite direction)
+        // Store previous direction and face forward
+        const previousDirection = npc.direction;
         npc.direction = 'face';
 
         // Add speech bubble
@@ -227,6 +228,9 @@ class HabboGame {
 
         // Wait for speech duration
         await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Restore previous direction after speaking
+        npc.direction = previousDirection;
     }
 
     async npcSpeakTo(charId, targetId, content) {
@@ -526,15 +530,8 @@ class HabboGame {
     }
 
 
-    getCharacterSprite(sprites, direction, hasSpeechBubbles) {
-        // If character is speaking (has active bubbles), show face sprite
-        if (hasSpeechBubbles && sprites['face']) {
-            return sprites['face'];
-        }
-
-        // We only have 5 sprites: face, top-left, top-right, bot-left, bot-right
-        // Direction should already be a string like 'bot-left', 'top-right', etc.
-
+    getCharacterSprite(sprites, direction) {
+        // Direction should already be a string like 'bot-left', 'top-right', 'face', etc.
         if (typeof direction === 'string') {
             // If it's already a valid sprite name, use it
             if (sprites[direction]) {
@@ -547,7 +544,7 @@ class HabboGame {
     }
 
     getCustomSprite(direction) {
-        return this.getCharacterSprite(this.characterSprites, direction, this.speechBubbles.length > 0);
+        return this.getCharacterSprite(this.characterSprites, this.player.direction);
     }
 
     setupControls() {
@@ -879,7 +876,7 @@ class HabboGame {
         // Check if NPC has loaded sprites
         if (npc.sprites && npc.sprites['bot-left']) {
             // Use the unified character drawing function
-            const sprite = this.getCharacterSprite(npc.sprites, npc.direction, npc.speechBubbles.length > 0);
+            const sprite = this.getCharacterSprite(npc.sprites, npc.direction);
             if (sprite) {
                 const scale = 0.08; // Same scale as player sprites
                 const drawWidth = sprite.width * scale;
@@ -1148,6 +1145,10 @@ class HabboGame {
     }
 
     say(message) {
+        // Store previous direction and face forward
+        const previousDirection = this.player.direction;
+        this.player.direction = 'face';
+
         // Add new message to the array
         const newBubble = {
             text: message,
@@ -1167,6 +1168,10 @@ class HabboGame {
             const index = this.speechBubbles.indexOf(newBubble);
             if (index > -1) {
                 this.speechBubbles.splice(index, 1);
+                // Restore previous direction when done speaking
+                if (this.speechBubbles.length === 0) {
+                    this.player.direction = previousDirection;
+                }
                 this.render();
             }
         }, this.bubbleDuration);
@@ -1360,19 +1365,45 @@ class HabboGame {
         // Draw the door entrance
         this.drawDoor();
 
-        // Draw all NPCs
+        // Collect all characters with their positions for depth sorting
+        const charactersToRender = [];
+
+        // Add player
+        const playerPos = this.getInterpolatedPosition();
+        charactersToRender.push({
+            type: 'player',
+            x: playerPos.x,
+            y: playerPos.y,
+            depth: playerPos.x + playerPos.y // Isometric depth calculation
+        });
+
+        // Add visible NPCs
         for (const npc of Object.values(this.npcs)) {
             if (npc.visible) {
                 const npcPos = this.getNPCInterpolatedPosition(npc);
-                this.drawNPC(npc, npcPos.x, npcPos.y);
-                this.drawNPCSpeechBubbles(npc, npcPos.x, npcPos.y);
+                charactersToRender.push({
+                    type: 'npc',
+                    npc: npc,
+                    x: npcPos.x,
+                    y: npcPos.y,
+                    depth: npcPos.x + npcPos.y // Isometric depth calculation
+                });
             }
         }
 
-        // Draw player character at interpolated position
-        const playerPos = this.getInterpolatedPosition();
-        this.drawCharacter(playerPos.x, playerPos.y);
-        this.drawSpeechBubbles(playerPos.x, playerPos.y);
+        // Sort by depth (lower depth = further back, drawn first)
+        charactersToRender.sort((a, b) => a.depth - b.depth);
+
+        // Draw characters in sorted order
+        for (const char of charactersToRender) {
+            if (char.type === 'player') {
+                this.drawCharacter(char.x, char.y);
+                this.drawSpeechBubbles(char.x, char.y);
+            } else {
+                this.drawNPC(char.npc, char.x, char.y);
+                this.drawNPCSpeechBubbles(char.npc, char.x, char.y);
+            }
+        }
     }
 }
 
