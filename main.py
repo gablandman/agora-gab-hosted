@@ -10,6 +10,7 @@ templates = Jinja2Templates(directory="templates")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.mount("/cache", StaticFiles(directory="cache"), name="cache")
+app.mount("/template-images", StaticFiles(directory="template-images"), name="template-images")
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):

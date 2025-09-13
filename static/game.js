@@ -20,25 +20,10 @@ class HabboGame {
             isMoving: false
         };
 
-        this.directions = {
-            'SW': 0,
-            'NW': 1,
-            'NE': 2,
-            'SE': 4,
-            'E': 5,
-            'NE_BACK': 6,
-            'N': 7
-        };
-
-        this.directionNames = ['SW', 'NW', 'NE', 'SE', 'SE', 'E', 'NE', 'N'];
 
         this.offsetX = this.canvas.width / 2;
         this.offsetY = 150;
 
-        this.spriteSheet = null;
-        this.spriteWidth = 155;
-        this.spriteHeight = 310;
-        this.spriteReady = false;
 
         // Character sprites
         this.characterSprites = {
@@ -69,7 +54,6 @@ class HabboGame {
 
     async init() {
         await this.loadCharacterList();
-        this.loadSprite();
         this.setupControls();
         this.startGameLoop();
         this.startStatePolling();
@@ -135,6 +119,14 @@ class HabboGame {
         const x = Math.floor(Math.random() * this.roomWidth);
         const y = Math.floor(Math.random() * this.roomHeight);
 
+        // Pick a random character skin from available characters
+        let characterSkinId = null;
+        const select = document.getElementById('characterSelect');
+        if (select && select.options.length > 0) {
+            const randomIndex = Math.floor(Math.random() * select.options.length);
+            characterSkinId = select.options[randomIndex].value;
+        }
+
         this.npcs[charId] = {
             id: charId,
             name: name,
@@ -149,10 +141,50 @@ class HabboGame {
             isMoving: false,
             visible: true,
             speechBubbles: [],
-            sprites: null // Will be loaded if needed
+            characterSkinId: characterSkinId,
+            sprites: {} // Will be loaded
         };
 
-        console.log(`Created NPC ${name} at position (${x}, ${y})`);
+        // Load sprites for this NPC if we have a skin ID
+        if (characterSkinId) {
+            this.loadNPCSprites(charId, characterSkinId);
+        }
+
+        console.log(`Created NPC ${name} at position (${x}, ${y}) with skin ${characterSkinId}`);
+    }
+
+    async loadNPCSprites(npcId, characterSkinId) {
+        const npc = this.npcs[npcId];
+        if (!npc) return;
+
+        // Load all character sprites for this NPC
+        const spritePaths = {
+            face: `/cache/${characterSkinId}-face.png`,
+            'top-left': `/cache/${characterSkinId}-top-left.png`,
+            'top-right': `/cache/${characterSkinId}-top-right.png`,
+            'bot-left': `/cache/${characterSkinId}-bot-left.png`,
+            'bot-right': `/cache/${characterSkinId}-bot-right.png`
+        };
+
+        let loadedCount = 0;
+        const totalSprites = Object.keys(spritePaths).length;
+
+        for (const [key, path] of Object.entries(spritePaths)) {
+            const img = new Image();
+            img.onload = () => {
+                loadedCount++;
+                if (loadedCount === totalSprites) {
+                    console.log(`All sprites loaded for NPC ${npc.name}`);
+                    this.render();
+                }
+            };
+            img.onerror = () => {
+                console.error(`Failed to load NPC sprite: ${path}`);
+                loadedCount++;
+            };
+            img.src = path;
+            npc.sprites[key] = img;
+        }
     }
 
     async executeAction(charId, action) {
@@ -493,31 +525,11 @@ class HabboGame {
         }
     }
 
-    loadSprite() {
-        this.spriteSheet = new Image();
-        this.spriteSheet.onload = () => {
-            this.spriteReady = true;
-            this.render();
-        };
-        this.spriteSheet.src = '/static/sprite.png';
-    }
 
-    getSprite(direction) {
-        if (!this.spriteReady) return null;
-
-        return {
-            img: this.spriteSheet,
-            sx: direction * this.spriteWidth,
-            sy: 0,
-            sw: this.spriteWidth,
-            sh: this.spriteHeight
-        };
-    }
-
-    getCustomSprite(direction) {
+    getCharacterSprite(sprites, direction, hasSpeechBubbles) {
         // If character is speaking (has active bubbles), show face sprite
-        if (this.speechBubbles.length > 0) {
-            return this.characterSprites['face'];
+        if (hasSpeechBubbles && sprites['face']) {
+            return sprites['face'];
         }
 
         // We only have 5 sprites: face, top-left, top-right, bot-left, bot-right
@@ -525,13 +537,17 @@ class HabboGame {
 
         if (typeof direction === 'string') {
             // If it's already a valid sprite name, use it
-            if (this.characterSprites[direction]) {
-                return this.characterSprites[direction];
+            if (sprites[direction]) {
+                return sprites[direction];
             }
         }
 
         // Default to bot-left if anything goes wrong
-        return this.characterSprites['bot-left'];
+        return sprites['bot-left'];
+    }
+
+    getCustomSprite(direction) {
+        return this.getCharacterSprite(this.characterSprites, direction, this.speechBubbles.length > 0);
     }
 
     setupControls() {
@@ -860,39 +876,59 @@ class HabboGame {
     drawNPC(npc, x, y) {
         const pos = this.isoToScreen(x, y);
 
-        // For now, draw NPCs as simple colored circles
-        // Later we can load specific sprites for each NPC
-        const charHeight = 60;
-        const charWidth = 20;
+        // Check if NPC has loaded sprites
+        if (npc.sprites && npc.sprites['bot-left']) {
+            // Use the unified character drawing function
+            const sprite = this.getCharacterSprite(npc.sprites, npc.direction, npc.speechBubbles.length > 0);
+            if (sprite) {
+                const scale = 0.08; // Same scale as player sprites
+                const drawWidth = sprite.width * scale;
+                const drawHeight = sprite.height * scale;
 
-        // Different colors for different NPCs
-        const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
-        const colorIndex = Math.abs(npc.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % colors.length;
+                this.ctx.drawImage(
+                    sprite,
+                    pos.x - drawWidth / 2,
+                    pos.y - drawHeight + 30,  // Same offset as player
+                    drawWidth,
+                    drawHeight
+                );
+            }
+        } else {
+            // Fallback to simple shape if no sprites loaded
+            const offsetY = 30;
+            const charHeight = 60;
+            const charWidth = 20;
 
-        // Shadow
-        this.ctx.fillStyle = '#333333';
-        this.ctx.beginPath();
-        this.ctx.ellipse(pos.x, pos.y - 5, charWidth/2, 8, 0, 0, Math.PI * 2);
-        this.ctx.fill();
+            // Different colors for different NPCs
+            const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
+            const colorIndex = Math.abs(npc.id.split('').reduce((a, b) => a + b.charCodeAt(0), 0)) % colors.length;
 
-        // Body
-        this.ctx.fillStyle = colors[colorIndex];
-        this.ctx.fillRect(pos.x - charWidth/2, pos.y - charHeight, charWidth, charHeight - 10);
+            // Shadow
+            this.ctx.fillStyle = '#333333';
+            this.ctx.beginPath();
+            this.ctx.ellipse(pos.x, pos.y + offsetY - 5, charWidth/2, 8, 0, 0, Math.PI * 2);
+            this.ctx.fill();
 
-        // Head
-        this.ctx.fillStyle = '#FFD4A3';
-        this.ctx.strokeStyle = '#333333';
-        this.ctx.lineWidth = 2;
-        this.ctx.beginPath();
-        this.ctx.arc(pos.x, pos.y - charHeight, 12, 0, Math.PI * 2);
-        this.ctx.fill();
-        this.ctx.stroke();
+            // Body
+            this.ctx.fillStyle = colors[colorIndex];
+            this.ctx.fillRect(pos.x - charWidth/2, pos.y + offsetY - charHeight, charWidth, charHeight - 10);
 
-        // Name label
+            // Head
+            this.ctx.fillStyle = '#FFD4A3';
+            this.ctx.strokeStyle = '#333333';
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.arc(pos.x, pos.y + offsetY - charHeight, 12, 0, Math.PI * 2);
+            this.ctx.fill();
+            this.ctx.stroke();
+        }
+
+        // Name label (always show)
         this.ctx.fillStyle = '#333333';
         this.ctx.font = '12px Arial';
         this.ctx.textAlign = 'center';
-        this.ctx.fillText(npc.name, pos.x, pos.y - charHeight - 20);
+        const nameY = npc.sprites && npc.sprites['bot-left'] ? pos.y - 10 : pos.y - 20;
+        this.ctx.fillText(npc.name, pos.x, nameY);
         this.ctx.textAlign = 'left';
     }
 
@@ -1270,40 +1306,24 @@ class HabboGame {
                 this.ctx.drawImage(
                     sprite,
                     pos.x - drawWidth / 2,
-                    pos.y - drawHeight + 20,
-                    drawWidth,
-                    drawHeight
-                );
-            }
-        } else if (this.spriteReady) {
-            // Use default sprite sheet
-            const sprite = this.getSprite(this.player.direction);
-            if (sprite) {
-                const scale = 0.35;
-                const drawWidth = sprite.sw * scale;
-                const drawHeight = sprite.sh * scale;
-
-                this.ctx.drawImage(
-                    sprite.img,
-                    sprite.sx, sprite.sy, sprite.sw, sprite.sh,
-                    pos.x - drawWidth / 2,
-                    pos.y - drawHeight + 20,
+                    pos.y - drawHeight + 30,  // Offset down more to touch the tile
                     drawWidth,
                     drawHeight
                 );
             }
         } else {
-            // Fallback to simple shape
+            // Fallback to simple shape if no character selected
             const charHeight = 60;
             const charWidth = 20;
+            const offsetY = 8; // Same offset for consistency
 
             this.ctx.fillStyle = '#333333';
             this.ctx.beginPath();
-            this.ctx.ellipse(pos.x, pos.y - 5, charWidth/2, 8, 0, 0, Math.PI * 2);
+            this.ctx.ellipse(pos.x, pos.y + offsetY - 5, charWidth/2, 8, 0, 0, Math.PI * 2);
             this.ctx.fill();
 
             this.ctx.fillStyle = '#FF6B6B';
-            this.ctx.fillRect(pos.x - charWidth/2, pos.y - charHeight, charWidth, charHeight - 10);
+            this.ctx.fillRect(pos.x - charWidth/2, pos.y + offsetY - charHeight, charWidth, charHeight - 10);
 
             this.ctx.fillStyle = '#FFD4A3';
             this.ctx.strokeStyle = '#333333';

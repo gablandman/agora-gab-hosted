@@ -270,7 +270,7 @@ def generate_character(description, character_id=None):
 if __name__ == "__main__":
     # Test character generation
     character_result = generate_character(
-        description="young guy pink sweatshirt curly hair black pants a tag with his name on his shirt"
+        description="Young boy with blond hair curtains haircut black shirt and jeans and a blue wristband"
     )
 
     if character_result:
