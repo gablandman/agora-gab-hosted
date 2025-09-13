@@ -89,13 +89,11 @@ class HabboGame {
         const select = document.getElementById('characterSelect');
         if (!select) return;
 
-        // Clear existing options except the default
-        while (select.options.length > 1) {
-            select.remove(1);
-        }
+        // Clear all existing options
+        select.innerHTML = '';
 
         // Add character options
-        characters.forEach(characterId => {
+        characters.forEach((characterId, index) => {
             const option = document.createElement('option');
             option.value = characterId;
             option.textContent = `Character ${characterId.substring(0, 8)}...`;
@@ -107,6 +105,12 @@ class HabboGame {
         if (loadBtn) {
             loadBtn.onclick = () => this.loadSelectedCharacter();
         }
+
+        // Automatically load the first character if available
+        if (characters.length > 0) {
+            select.value = characters[0];
+            this.loadSelectedCharacter();
+        }
     }
 
     async loadSelectedCharacter() {
@@ -114,10 +118,7 @@ class HabboGame {
         const characterId = select.value;
 
         if (!characterId) {
-            // Use default sprite
-            this.useCustomCharacter = false;
-            this.spriteReady = true;
-            this.render();
+            // No character selected, don't render anything
             return;
         }
 
@@ -196,16 +197,7 @@ class HabboGame {
     }
 
     setupControls() {
-        document.getElementById('moveUp').addEventListener('click', () => this.movePlayer(0, -1));
-        document.getElementById('moveDown').addEventListener('click', () => this.movePlayer(0, 1));
-        document.getElementById('moveLeft').addEventListener('click', () => this.movePlayer(-1, 0));
-        document.getElementById('moveRight').addEventListener('click', () => this.movePlayer(1, 0));
-
-        document.getElementById('dirNW').addEventListener('click', () => this.setDirection(1));
-        document.getElementById('dirNE').addEventListener('click', () => this.setDirection(2));
-        document.getElementById('dirSE').addEventListener('click', () => this.setDirection(4));
-        document.getElementById('dirSW').addEventListener('click', () => this.setDirection(0));
-
+        // Only keyboard controls for movement
         document.addEventListener('keydown', (e) => {
             switch(e.key) {
                 case 'ArrowUp':

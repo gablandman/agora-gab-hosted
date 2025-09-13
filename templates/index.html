@@ -12,30 +12,11 @@
         <div id="characterSelector" class="character-selector">
             <h3>Select Character</h3>
             <select id="characterSelect">
-                <option value="">Default Character</option>
             </select>
             <button id="loadCharacterBtn">Load Character</button>
         </div>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
         <div class="controls">
-            <div class="movement-controls">
-                <button id="moveUp" class="control-btn">↑</button>
-                <div class="horizontal-controls">
-                    <button id="moveLeft" class="control-btn">←</button>
-                    <button id="moveDown" class="control-btn">↓</button>
-                    <button id="moveRight" class="control-btn">→</button>
-                </div>
-            </div>
-            <div class="direction-controls">
-                <p>Direction:</p>
-                <div class="direction-buttons">
-                    <button id="dirNW" class="dir-btn">NW</button>
-                    <button id="dirNE" class="dir-btn">NE</button>
-                    <button id="dirSE" class="dir-btn">SE</button>
-                    <button id="dirSW" class="dir-btn">SW</button>
-                </div>
-                <p id="currentDirection">Current: SE</p>
-            </div>
             <div class="chat-controls">
                 <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
                 <button id="sayButton">Say</button>
