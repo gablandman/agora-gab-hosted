@@ -1,0 +1,6 @@
+- say (param: text) -> look straight (use the face sprite) and say something
+- speak_to (param: target_id, text) -> the character moves to a free tile adjacent to the target, look in the direction of the target before saying the text
+- leave -> (optional param: text) -> moves to the door before disapearing, optionnaly says something while going. 
+- enter -> (optional param: text) -> appears at the door, optionnaly say something
+- move -> moves on a random free tile in the room and do nothing 
+- nothing -> no op, do nothing

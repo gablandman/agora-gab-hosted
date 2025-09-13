@@ -1,0 +1,45 @@
+{
+  "characters": {
+    "char-001": {
+      "name": "Alice",
+      "actions": [
+        {
+          "type": "move"
+        },
+        {
+          "type": "say",
+          "content": "Hello everyone!"
+        },
+        {
+          "type": "nothing"
+        }
+      ]
+    },
+    "char-002": {
+      "name": "Bob",
+      "actions": [
+        {
+          "type": "speak_to",
+          "target": "char-001",
+          "content": "Hello Alice!"
+        },
+        {
+          "type": "say",
+          "content": "Let's party!"
+        },
+        {
+          "type": "leave",
+          "content": "I'm going home"
+        }
+      ]
+    },
+    "char-003": {
+      "name": "Charlie",
+      "actions": [
+        {
+          "type": "enter"
+        }
+      ]
+    }
+  }
+}
