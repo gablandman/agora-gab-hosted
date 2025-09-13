@@ -1,0 +1,355 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Mini Habbo (Vanilla JS)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #0e0f13;
+      color: #d7d8db;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Inter, Arial, sans-serif;
+      overflow: hidden;
+    }
+    #game {
+      display: block;
+      width: 100vw;
+      height: 100vh;
+      outline: none;
+      cursor: default;
+    }
+    .hud {
+      position: fixed;
+      left: 12px; top: 12px;
+      background: rgba(20,22,28,0.7);
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      line-height: 1.4;
+      user-select: none;
+      pointer-events: none;
+      box-shadow: 0 6px 24px rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.06);
+    }
+    .hud kbd {
+      background: #1c1f27;
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game" tabindex="0" aria-label="Mini Habbo Canvas"></canvas>
+  <div class="hud">
+    <div><strong>Mini Habbo (one room)</strong></div>
+    <div>Move: <kbd>↑</kbd> <kbd>↓</kbd> <kbd>←</kbd> <kbd>→</kbd></div>
+    <div>Dance: <kbd>D</kbd> • Toggle grid: <kbd>G</kbd></div>
+  </div>
+
+  <script>
+  "use strict";
+
+  // ====== Config ======
+  const TILE_W = 64;      // full tile width in pixels
+  const TILE_H = 32;      // full tile height in pixels
+  const MAP_W  = 12;      // tiles
+  const MAP_H  = 12;      // tiles
+  const MOVE_SPEED_TPS = 5; // tiles per second for tweened movement
+
+  // ====== Canvas / Context ======
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d", { alpha: false });
+  let originX = 0, originY = 0; // where (0,0) tile is projected on screen
+
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    // Horizontal center: since MAP_W==MAP_H, centre on screen
+    originX = canvas.width / 2;
+    // Put the top of the map a bit below the top edge
+    originY = Math.max(60, canvas.height * 0.12);
+  }
+  window.addEventListener("resize", resize);
+  resize();
+  canvas.focus();
+
+  // ====== Iso <-> Screen math ======
+  function isoToScreen(ix, iy) {
+    const sx = (ix - iy) * (TILE_W / 2) + originX;
+    const sy = (ix + iy) * (TILE_H / 2) + originY;
+    return { sx, sy };
+  }
+  function screenToIso(mx, my) {
+    const dx = mx - originX;
+    const dy = my - originY;
+    const X = (2 * dx) / TILE_W;
+    const Y = (2 * dy) / TILE_H;
+    const ix = (X + Y) / 2;
+    const iy = (Y - X) / 2;
+    return { ix, iy };
+  }
+
+  // ====== Map (0 = floor / walkable, 1 = blocked / obstacle) ======
+  const map = (() => {
+    const rows = [];
+    for (let y = 0; y < MAP_H; y++) {
+      const row = [];
+      for (let x = 0; x < MAP_W; x++) {
+        // Basic room: border blocked, interior mostly walkable
+        const border = (x === 0 || y === 0 || x === MAP_W-1 || y === MAP_H-1) ? 1 : 0;
+        row.push(border);
+      }
+      rows.push(row);
+    }
+    // Sprinkle a few obstacles inside
+    const obstacles = [
+      [4,4],[5,4],[6,4],
+      [3,7],[3,8],
+      [8,6]
+    ];
+    for (const [ox, oy] of obstacles) {
+      if (ox>0 && oy>0 && ox<MAP_W-1 && oy<MAP_H-1) rows[oy][ox] = 1;
+    }
+    return rows;
+  })();
+
+  function inBounds(x, y) {
+    return x >= 0 && y >= 0 && x < MAP_W && y < MAP_H;
+  }
+  function isWalkable(x, y) {
+    return inBounds(x, y) && map[y][x] === 0;
+  }
+
+  // ====== Input ======
+  const keys = new Set();
+  window.addEventListener("keydown", (e) => {
+    if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","d","D","g","G"].includes(e.key)) e.preventDefault();
+    if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) keys.add(e.key);
+    if (e.key === "d" || e.key === "D") player.dancing = !player.dancing;
+    if (e.key === "g" || e.key === "G") debug.grid = !debug.grid;
+  });
+  window.addEventListener("keyup", (e) => {
+    if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight"].includes(e.key)) keys.delete(e.key);
+  });
+
+  // ====== Player / Entities ======
+  const player = {
+    x: Math.floor(MAP_W/2),
+    y: Math.floor(MAP_H/2),
+    fromX: null,
+    fromY: null,
+    toX: null,
+    toY: null,
+    progress: 0,      // 0..1 lerp when moving
+    moving: false,
+    dancing: false,
+    facing: "down",   // "up"|"down"|"left"|"right" (for future sprite)
+  };
+
+  function tryStartMove(dx, dy, facing) {
+    if (player.moving) return;
+    const nx = player.x + dx;
+    const ny = player.y + dy;
+    if (!isWalkable(nx, ny)) return;
+    player.facing = facing;
+    player.fromX = player.x;
+    player.fromY = player.y;
+    player.toX = nx;
+    player.toY = ny;
+    player.progress = 0;
+    player.moving = true;
+  }
+
+  function handleInput() {
+    if (player.moving) return;
+    // Priority order: Up, Down, Left, Right (change if you like)
+    if (keys.has("ArrowUp"))    { tryStartMove(0, -1, "up"); return; }
+    if (keys.has("ArrowDown"))  { tryStartMove(0,  1, "down"); return; }
+    if (keys.has("ArrowLeft"))  { tryStartMove(-1, 0, "left"); return; }
+    if (keys.has("ArrowRight")) { tryStartMove( 1, 0, "right"); return; }
+  }
+
+  // ====== Render helpers ======
+  function drawTile(x, y, blocked) {
+    const { sx, sy } = isoToScreen(x, y);
+    const halfW = TILE_W / 2;
+    const halfH = TILE_H / 2;
+
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - halfH);
+    ctx.lineTo(sx + halfW, sy);
+    ctx.lineTo(sx, sy + halfH);
+    ctx.lineTo(sx - halfW, sy);
+    ctx.closePath();
+
+    // Simple floor shading, obstacles darker:
+    if (!blocked) {
+      ctx.fillStyle = "#2a2f3a";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = "#1f232b";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(255,255,255,0.10)";
+      ctx.stroke();
+      // Optional: tiny "pillar" hint
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - halfH);
+      ctx.lineTo(sx + halfW, sy);
+      ctx.lineTo(sx, sy + halfH - 8);
+      ctx.lineTo(sx - halfW, sy);
+      ctx.closePath();
+      ctx.fillStyle = "#1a1d24";
+      ctx.fill();
+    }
+  }
+
+  function drawGrid(x, y) {
+    const { sx, sy } = isoToScreen(x, y);
+    const halfW = TILE_W / 2;
+    const halfH = TILE_H / 2;
+    ctx.beginPath();
+    ctx.moveTo(sx, sy - halfH);
+    ctx.lineTo(sx + halfW, sy);
+    ctx.lineTo(sx, sy + halfH);
+    ctx.lineTo(sx - halfW, sy);
+    ctx.closePath();
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.stroke();
+  }
+
+  function drawShadow(sx, sy) {
+    ctx.save();
+    ctx.translate(sx, sy);
+    ctx.scale(1, 0.5);
+    ctx.beginPath();
+    ctx.arc(0, 6, 10, 0, Math.PI * 2);
+    ctx.fillStyle = "rgba(0,0,0,0.35)";
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPlayer(px, py, timeSec) {
+    const { sx, sy } = isoToScreen(px, py);
+    // Dance bob
+    const bob = player.dancing ? Math.sin(timeSec * 8) * 4 : 0;
+
+    // Shadow at feet
+    drawShadow(sx, sy + 8);
+
+    // Simple cartoon body (no sprites)
+    const bodyH = 28, bodyW = 16;
+    const headR = 8;
+
+    // Legs
+    ctx.fillStyle = "#4770ff";
+    ctx.fillRect(sx - bodyW/2, sy - bodyH + bob + 8, bodyW, bodyH);
+
+    // Head
+    ctx.beginPath();
+    ctx.arc(sx, sy - bodyH - headR + bob + 6, headR, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffd7b1";
+    ctx.fill();
+
+    // Minimal face dot
+    ctx.fillStyle = "#1d1f25";
+    ctx.fillRect(sx - 2, sy - bodyH - headR + bob + 6, 4, 2);
+
+    // Arms (change a bit while dancing)
+    const armOffset = player.dancing ? Math.sin(timeSec * 8 + Math.PI/2) * 4 : 0;
+    ctx.fillStyle = "#62a0ff";
+    ctx.fillRect(sx - bodyW/2 - 4, sy - bodyH + bob + 10 + armOffset, 6, 14);
+    ctx.fillRect(sx + bodyW/2 - 2, sy - bodyH + bob + 10 - armOffset, 6, 14);
+
+    // Tiny hat (optional flair)
+    ctx.fillStyle = "#141821";
+    ctx.fillRect(sx - 10, sy - bodyH - headR*2 + bob + 12, 20, 6);
+    ctx.fillRect(sx - 6, sy - bodyH - headR*2 + bob + 6, 12, 6);
+  }
+
+  // ====== Game Loop ======
+  const debug = { grid: false };
+  let last = performance.now();
+
+  function update(dt) {
+    handleInput();
+
+    if (player.moving) {
+      player.progress += MOVE_SPEED_TPS * dt;
+      if (player.progress >= 1) {
+        player.x = player.toX;
+        player.y = player.toY;
+        player.moving = false;
+        player.progress = 0;
+        player.fromX = player.fromY = player.toX = player.toY = null;
+      }
+    }
+  }
+
+  function currentPlayerPos() {
+    if (!player.moving) return { px: player.x, py: player.y };
+    const t = Math.min(1, player.progress);
+    const px = player.fromX + (player.toX - player.fromX) * t;
+    const py = player.fromY + (player.toY - player.fromY) * t;
+    return { px, py };
+  }
+
+  function render(nowSec) {
+    // Clear
+    ctx.fillStyle = "#0e0f13";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw floor (sorted by y then x to approximate depth)
+    for (let y = 0; y < MAP_H; y++) {
+      for (let x = 0; x < MAP_W; x++) {
+        drawTile(x, y, map[y][x] === 1);
+      }
+    }
+
+    if (debug.grid) {
+      for (let y = 0; y < MAP_H; y++) {
+        for (let x = 0; x < MAP_W; x++) {
+          drawGrid(x, y);
+        }
+      }
+    }
+
+    // Draw entities (only player for now)
+    const { px, py } = currentPlayerPos();
+    drawPlayer(px, py, nowSec);
+  }
+
+  function loop(now) {
+    const nowSec = now / 1000;
+    const dt = Math.min(0.033, Math.max(0.001, (now - last) / 1000)); // clamp
+    last = now;
+    update(dt);
+    render(nowSec);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  // ====== Optional: click-to-select tile (no pathfinding yet) ======
+  canvas.addEventListener("click", (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const { ix, iy } = screenToIso(mx, my);
+    const tx = Math.round(ix), ty = Math.round(iy);
+    if (!player.moving && isWalkable(tx, ty)) {
+      // naive: step horizontally then vertically (no obstacle avoidance)
+      const dx = Math.sign(tx - player.x);
+      const dy = Math.sign(ty - player.y);
+      if (dx !== 0)      tryStartMove(dx, 0, dx < 0 ? "left" : "right");
+      else if (dy !== 0) tryStartMove(0, dy, dy < 0 ? "up" : "down");
+    }
+  });
+  </script>
+</body>
+</html>
