@@ -79,7 +79,7 @@ async def generate_direction_async(gemini_model, direction_prompt, generated_fac
                 if hasattr(part, 'inline_data') and part.inline_data:
                     img_data = part.inline_data.data
                     img = Image.open(BytesIO(img_data))
-                    output_path = f"static/assets/{character_id}-{direction_name}.png"
+                    output_path = f"cache/{character_id}-{direction_name}.png"
                     img.save(output_path)
                     print(f"✓ {direction_name} view saved to: {output_path}")
                     return direction_name, output_path, img
@@ -134,7 +134,7 @@ def generate_character(description, character_id=None):
                 if hasattr(part, 'inline_data') and part.inline_data:
                     img_data = part.inline_data.data
                     img = Image.open(BytesIO(img_data))
-                    generated_face_path = f"static/assets/{character_id}-face.png"
+                    generated_face_path = f"cache/{character_id}-face.png"
                     img.save(generated_face_path)
 
                     # Apply background removal
@@ -221,7 +221,7 @@ def generate_character(description, character_id=None):
                 if direction_name == 'top-left':
                     # Flip horizontally to create top-right
                     flipped_img = img.transpose(Image.FLIP_LEFT_RIGHT)
-                    flipped_path = f"static/assets/{character_id}-top-right.png"
+                    flipped_path = f"cache/{character_id}-top-right.png"
                     flipped_img.save(flipped_path)
                     results['top-right'] = flipped_path
                     print(f"✓ top-right view created (flipped from top-left): {flipped_path}")
@@ -229,7 +229,7 @@ def generate_character(description, character_id=None):
                 elif direction_name == 'bot-left':
                     # Flip horizontally to create bot-right
                     flipped_img = img.transpose(Image.FLIP_LEFT_RIGHT)
-                    flipped_path = f"static/assets/{character_id}-bot-right.png"
+                    flipped_path = f"cache/{character_id}-bot-right.png"
                     flipped_img.save(flipped_path)
                     results['bot-right'] = flipped_path
                     print(f"✓ bot-right view created (flipped from bot-left): {flipped_path}")
@@ -237,8 +237,11 @@ def generate_character(description, character_id=None):
         results['character_id'] = character_id
 
         # Save character ID to JSON file
-        characters_file = "static/assets/characters.json"
+        characters_file = "cache/characters.json"
         try:
+            # Ensure cache directory exists
+            os.makedirs("cache", exist_ok=True)
+
             # Load existing characters
             if os.path.exists(characters_file):
                 with open(characters_file, 'r') as f:

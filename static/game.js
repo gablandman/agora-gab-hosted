@@ -127,11 +127,11 @@ class HabboGame {
 
         // Load all character sprites
         const spritePaths = {
-            face: `/static/assets/${characterId}-face.png`,
-            'top-left': `/static/assets/${characterId}-top-left.png`,
-            'top-right': `/static/assets/${characterId}-top-right.png`,
-            'bot-left': `/static/assets/${characterId}-bot-left.png`,
-            'bot-right': `/static/assets/${characterId}-bot-right.png`
+            face: `/cache/${characterId}-face.png`,
+            'top-left': `/cache/${characterId}-top-left.png`,
+            'top-right': `/cache/${characterId}-top-right.png`,
+            'bot-left': `/cache/${characterId}-bot-left.png`,
+            'bot-right': `/cache/${characterId}-bot-right.png`
         };
 
         let loadedCount = 0;

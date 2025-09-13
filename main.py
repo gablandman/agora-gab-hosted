@@ -9,6 +9,7 @@ app = FastAPI()
 templates = Jinja2Templates(directory="templates")
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/cache", StaticFiles(directory="cache"), name="cache")
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -17,7 +18,7 @@ async def index(request: Request):
 @app.get("/api/characters")
 async def get_characters():
     """Get list of available character IDs"""
-    characters_file = "static/assets/characters.json"
+    characters_file = "cache/characters.json"
 
     if os.path.exists(characters_file):
         with open(characters_file, 'r') as f:
