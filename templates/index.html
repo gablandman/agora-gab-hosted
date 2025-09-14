@@ -109,9 +109,12 @@
             <div class="panel-section">
                 <h3>Game Control</h3>
                 <div class="test-buttons">
-                    <button onclick="startGame()" class="panel-btn" style="background: #4ECDC4;">Start Auto-Play</button>
-                    <button onclick="stopGame()" class="panel-btn" style="background: #FF6B6B;">Stop Auto-Play</button>
-                    <button onclick="executeTurn()" class="panel-btn" style="background: #FFD93D;">Execute Turn</button>
+                    <button id="toggleAutoPlayBtn" onclick="toggleAutoPlay()" class="panel-btn" style="background: #4ECDC4;">
+                        <i class="nf nf-fa-play"></i>
+                    </button>
+                    <button onclick="executeTurn()" class="panel-btn" style="background: #FFD93D;">
+                        <i class="nf nf-fa-forward"></i>
+                    </button>
                 </div>
             </div>
         </div>

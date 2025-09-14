@@ -331,6 +331,21 @@ h1 .nf {
     box-shadow: 2px 2px 0 rgba(0, 0, 0, 1);
 }
 
+/* Icon buttons in test-buttons */
+.test-buttons .panel-btn {
+    width: 60px;
+    height: 60px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+}
+
+.test-buttons .panel-btn i {
+    font-size: 24px;
+}
+
 .checkbox-label {
     display: flex;
     align-items: center;

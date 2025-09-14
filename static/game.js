@@ -2127,6 +2127,28 @@ async function stopGame() {
     }
 }
 
+// Track auto-play state
+let isAutoPlaying = false;
+
+async function toggleAutoPlay() {
+    const button = document.getElementById('toggleAutoPlayBtn');
+    const icon = button.querySelector('i');
+
+    if (isAutoPlaying) {
+        // Stop the game
+        await stopGame();
+        isAutoPlaying = false;
+        icon.className = 'nf nf-fa-play';
+        button.style.background = '#4ECDC4';
+    } else {
+        // Start the game
+        await startGame();
+        isAutoPlaying = true;
+        icon.className = 'nf nf-fa-pause';
+        button.style.background = '#FF6B6B';
+    }
+}
+
 async function executeTurn() {
     try {
         const response = await fetch('/api/game/turn', { method: 'POST' });
