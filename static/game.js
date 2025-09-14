@@ -359,22 +359,29 @@ class HabboGame {
 
         if (!npc || !target) return;
 
-        // Find adjacent free tile to target
+        // Check if NPC is already adjacent to target
         const adjacentTiles = this.getAdjacentTiles(target.x, target.y);
-        const freeTile = adjacentTiles.find(tile => this.isTileFree(tile.x, tile.y));
+        const isAlreadyAdjacent = adjacentTiles.some(tile =>
+            Math.floor(npc.x) === tile.x && Math.floor(npc.y) === tile.y
+        );
 
-        if (freeTile) {
-            // Move to adjacent tile
-            await this.moveNPCTo(charId, freeTile.x, freeTile.y);
+        if (!isAlreadyAdjacent) {
+            // Find adjacent free tile to target and move there
+            const freeTile = adjacentTiles.find(tile => this.isTileFree(tile.x, tile.y));
 
-            // Face the target
-            this.faceTowards(npc, target);
-
-            // Say the content
-            if (content) {
-                this.addNPCSpeechBubble(charId, content);
-                await new Promise(resolve => setTimeout(resolve, 2000));
+            if (freeTile) {
+                // Move to adjacent tile
+                await this.moveNPCTo(charId, freeTile.x, freeTile.y);
             }
+        }
+
+        // Always face the target (whether we moved or not)
+        this.faceTowards(npc, target);
+
+        // Say the content
+        if (content) {
+            this.addNPCSpeechBubble(charId, content);
+            await new Promise(resolve => setTimeout(resolve, 2000));
         }
     }
 
@@ -987,16 +994,17 @@ class HabboGame {
     }
 
     drawNameTag(name, x, y) {
-        // Set up text style
-        this.ctx.font = 'bold 11px Arial';
+        // Set up text style - larger font for better readability
+        const fontSize = Math.max(14, 12 * this.scale);
+        this.ctx.font = `bold ${fontSize}px Arial`;
         this.ctx.textAlign = 'center';
 
         // Measure text
         const metrics = this.ctx.measureText(name);
         const textWidth = metrics.width;
-        const padding = 4;
+        const padding = 6;
         const bgWidth = textWidth + padding * 2;
-        const bgHeight = 16;
+        const bgHeight = fontSize + 8;
 
         // Draw background with rounded corners
         const bgX = x - bgWidth / 2;
@@ -1009,17 +1017,17 @@ class HabboGame {
         this.ctx.roundRect(bgX + 1, bgY + 1, bgWidth, bgHeight, radius);
         this.ctx.fill();
 
-        // Background
-        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
-        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
-        this.ctx.lineWidth = 1;
+        // Background - more opaque for better contrast
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 1)';
+        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)';
+        this.ctx.lineWidth = 1.5;
         this.ctx.beginPath();
         this.ctx.roundRect(bgX, bgY, bgWidth, bgHeight, radius);
         this.ctx.fill();
         this.ctx.stroke();
 
-        // Draw text
-        this.ctx.fillStyle = '#333333';
+        // Draw text - darker for better contrast
+        this.ctx.fillStyle = '#000000';
         this.ctx.fillText(name, x, y + 4); // Slight offset to center vertically
         this.ctx.textAlign = 'left';
     }
@@ -1074,17 +1082,16 @@ class HabboGame {
             this.ctx.stroke();
         }
 
-        // Name label with background (always show)
-        this.drawNameTag(npc.name, pos.x, pos.y + (35 * this.scale)); // Position under feet
+        // Name tag will be drawn in a separate pass to ensure it's above all characters
     }
 
     drawNPCSpeechBubbles(npc, x, y) {
         if (npc.speechBubbles.length === 0) return;
 
         const pos = this.isoToScreen(x, y);
-        const padding = 10;
+        const padding = 12; // Increased padding for larger text
         const maxWidth = 200;
-        const lineHeight = 18;
+        const lineHeight = 24; // Increased for larger font
         const bubbleSpacing = 5;
         const radius = 10;
 
@@ -1093,7 +1100,8 @@ class HabboGame {
         const bubblesData = [];
 
         npc.speechBubbles.forEach((bubble) => {
-            this.ctx.font = '14px Arial';
+            const fontSize = Math.max(18, 16 * this.scale);
+            this.ctx.font = `${fontSize}px Arial`;
             const words = bubble.text.split(' ');
             const lines = [];
             let currentLine = '';
@@ -1174,9 +1182,10 @@ class HabboGame {
             this.ctx.fill();
             this.ctx.stroke();
 
-            // Draw text
-            this.ctx.fillStyle = '#333';
-            this.ctx.font = '14px Arial';
+            // Draw text - larger and darker for better readability
+            this.ctx.fillStyle = '#000';
+            const fontSize = Math.max(18, 16 * this.scale);
+            this.ctx.font = `${fontSize}px Arial`;
             lines.forEach((line, lineIndex) => {
                 const textX = bubbleX + padding;
                 const textY = bubbleY + padding + (lineIndex + 1) * lineHeight - 2;
@@ -1351,9 +1360,9 @@ class HabboGame {
         if (this.speechBubbles.length === 0) return;
 
         const pos = this.isoToScreen(x, y);
-        const padding = 10;
+        const padding = 12; // Increased padding for larger text
         const maxWidth = 200;
-        const lineHeight = 18;
+        const lineHeight = 24; // Increased for larger font
         const bubbleSpacing = 5;
         const radius = 10;
 
@@ -1362,7 +1371,8 @@ class HabboGame {
         const bubblesData = [];
 
         this.speechBubbles.forEach((bubble) => {
-            this.ctx.font = '14px Arial';
+            const fontSize = Math.max(18, 16 * this.scale);
+            this.ctx.font = `${fontSize}px Arial`;
             const words = bubble.text.split(' ');
             const lines = [];
             let currentLine = '';
@@ -1449,9 +1459,10 @@ class HabboGame {
             this.ctx.fill();
             this.ctx.stroke();
 
-            // Draw text
-            this.ctx.fillStyle = '#333';
-            this.ctx.font = '14px Arial';
+            // Draw text - larger and darker for better readability
+            this.ctx.fillStyle = '#000';
+            const fontSize = Math.max(18, 16 * this.scale);
+            this.ctx.font = `${fontSize}px Arial`;
             lines.forEach((line, lineIndex) => {
                 const textX = bubbleX + padding;
                 const textY = bubbleY + padding + (lineIndex + 1) * lineHeight - 2;
@@ -1515,8 +1526,7 @@ class HabboGame {
             this.ctx.fill();
         }
 
-        // Draw name tag under the character
-        this.drawNameTag(this.player.name, pos.x, pos.y + (35 * this.scale));
+        // Name tag will be drawn in a separate pass to ensure it's above all characters
     }
 
     render() {
@@ -1574,7 +1584,7 @@ class HabboGame {
         // Sort by depth (lower depth = further back, drawn first)
         charactersToRender.sort((a, b) => a.depth - b.depth);
 
-        // Draw characters in sorted order
+        // Draw characters in sorted order (without name tags)
         for (const char of charactersToRender) {
             if (char.type === 'player') {
                 this.drawCharacter(char.x, char.y);
@@ -1583,6 +1593,13 @@ class HabboGame {
                 this.drawNPC(char.npc, char.x, char.y);
                 this.drawNPCSpeechBubbles(char.npc, char.x, char.y);
             }
+        }
+
+        // Draw all name tags in a separate pass (ensures they appear above all characters)
+        for (const char of charactersToRender) {
+            const pos = this.isoToScreen(char.x, char.y);
+            const name = char.type === 'player' ? this.player.name : char.npc.name;
+            this.drawNameTag(name, pos.x, pos.y + (35 * this.scale));
         }
 
         // Draw overlay in foreground layer if set
