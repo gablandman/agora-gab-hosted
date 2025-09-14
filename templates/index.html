@@ -23,6 +23,15 @@
         <div class="panel-content">
             <h2>Controls</h2>
 
+            <!-- Agent Management -->
+            <div class="panel-section">
+                <h3>Agent Management</h3>
+                <input type="text" id="agentName" class="panel-input" placeholder="Agent name..." maxlength="50">
+                <textarea id="agentInstructions" class="panel-input" placeholder="Agent personality/instructions..." rows="3" maxlength="500"></textarea>
+                <button id="createAgentBtn" class="panel-btn" onclick="createAgent()">Create Agent</button>
+                <div id="agentsList" style="margin-top: 10px;"></div>
+            </div>
+
             <!-- Chat Section -->
             <div class="panel-section">
                 <h3>Chat</h3>
@@ -96,16 +105,13 @@
                 </label>
             </div>
 
-            <!-- Test NPC Actions -->
+            <!-- Game Control -->
             <div class="panel-section">
-                <h3>Test NPC Actions</h3>
+                <h3>Game Control</h3>
                 <div class="test-buttons">
-                    <button onclick="testNPCAction('say')" class="panel-btn">Test Say</button>
-                    <button onclick="testNPCAction('speak_to')" class="panel-btn">Test Speak To</button>
-                    <button onclick="testNPCAction('move')" class="panel-btn">Test Move</button>
-                    <button onclick="testNPCAction('enter')" class="panel-btn">Test Enter</button>
-                    <button onclick="testNPCAction('leave')" class="panel-btn">Test Leave</button>
-                    <button onclick="testNPCAction('nothing')" class="panel-btn">Test Nothing</button>
+                    <button onclick="startGame()" class="panel-btn" style="background: #4ECDC4;">Start Auto-Play</button>
+                    <button onclick="stopGame()" class="panel-btn" style="background: #FF6B6B;">Stop Auto-Play</button>
+                    <button onclick="executeTurn()" class="panel-btn" style="background: #FFD93D;">Execute Turn</button>
                 </div>
             </div>
         </div>

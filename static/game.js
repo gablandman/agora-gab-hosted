@@ -195,7 +195,7 @@ class HabboGame {
 
     async fetchAndProcessState() {
         try {
-            const response = await fetch('/state');
+            const response = await fetch('/api/game/state');
             const state = await response.json();
 
             if (state.characters) {
@@ -1790,6 +1790,7 @@ let gameInstance = null;
 
 document.addEventListener('DOMContentLoaded', () => {
     gameInstance = new HabboGame();
+    loadAgentsList();
 });
 
 // Test function for buttons
@@ -1954,4 +1955,141 @@ function changeOverlay(overlayPath) {
     }
 
     gameInstance.render();
+}
+
+// Agent Management Functions
+async function createAgent() {
+    const nameInput = document.getElementById('agentName');
+    const instructionsInput = document.getElementById('agentInstructions');
+
+    const name = nameInput.value.trim();
+    const instructions = instructionsInput.value.trim();
+
+    if (!name || !instructions) {
+        alert('Please provide both name and instructions for the agent');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/agents', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                name: name,
+                instructions: instructions
+            })
+        });
+
+        if (response.ok) {
+            const agent = await response.json();
+            console.log('Agent created:', agent);
+            nameInput.value = '';
+            instructionsInput.value = '';
+            loadAgentsList();
+
+            // Refresh game state to show new character
+            if (gameInstance) {
+                gameInstance.fetchAndProcessState();
+            }
+        } else {
+            const error = await response.json();
+            alert(`Failed to create agent: ${error.detail || 'Unknown error'}`);
+        }
+    } catch (error) {
+        console.error('Error creating agent:', error);
+        alert('Failed to create agent');
+    }
+}
+
+async function deleteAgent(agentId) {
+    if (!confirm('Are you sure you want to delete this agent?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/agents/${agentId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            console.log('Agent deleted:', agentId);
+            loadAgentsList();
+
+            // Refresh game state
+            if (gameInstance) {
+                gameInstance.fetchAndProcessState();
+            }
+        } else {
+            alert('Failed to delete agent');
+        }
+    } catch (error) {
+        console.error('Error deleting agent:', error);
+        alert('Failed to delete agent');
+    }
+}
+
+async function loadAgentsList() {
+    try {
+        const response = await fetch('/api/agents');
+        const agents = await response.json();
+
+        const agentsList = document.getElementById('agentsList');
+        if (!agentsList) return;
+
+        if (agents.length === 0) {
+            agentsList.innerHTML = '<div style="color: #666; font-size: 12px;">No agents yet</div>';
+            return;
+        }
+
+        agentsList.innerHTML = agents.map(agent => `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; padding: 5px; background: #f0f0f0; border-radius: 3px;">
+                <span style="font-size: 12px;">${agent.name}</span>
+                <button onclick="deleteAgent('${agent.id}')" style="padding: 2px 8px; font-size: 11px; background: #ff6b6b; color: white; border: none; border-radius: 3px; cursor: pointer;">Delete</button>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading agents:', error);
+    }
+}
+
+// Game control functions
+async function startGame() {
+    try {
+        const response = await fetch('/api/game/start', { method: 'POST' });
+        if (response.ok) {
+            console.log('Game started');
+        }
+    } catch (error) {
+        console.error('Error starting game:', error);
+    }
+}
+
+async function stopGame() {
+    try {
+        const response = await fetch('/api/game/stop', { method: 'POST' });
+        if (response.ok) {
+            console.log('Game stopped');
+        }
+    } catch (error) {
+        console.error('Error stopping game:', error);
+    }
+}
+
+async function executeTurn() {
+    try {
+        const response = await fetch('/api/game/turn', { method: 'POST' });
+        if (response.ok) {
+            const context = await response.json();
+            console.log('Turn executed:', context);
+
+            // Refresh game state
+            if (gameInstance) {
+                gameInstance.fetchAndProcessState();
+            }
+        }
+    } catch (error) {
+        console.error('Error executing turn:', error);
+    }
 }
