@@ -48,7 +48,7 @@ def create_agent(
         }
         
         with httpx.Client() as client:
-            response = client.post(f"{BACKEND_URL}/api/agents", json=data)
+            response = client.post(f"{BACKEND_URL.rstrip('/')}/api/agents", json=data)
         
         if response.status_code == 200:
             agent_data = response.json()
@@ -75,7 +75,7 @@ def list_agents() -> str:
         import httpx
         
         with httpx.Client() as client:
-            response = client.get(f"{BACKEND_URL}/api/agents")
+            response = client.get(f"{BACKEND_URL.rstrip('/')}/api/agents")
         
         if response.status_code == 200:
             agents = response.json()
@@ -108,7 +108,7 @@ def delete_agent(
         import httpx
         
         with httpx.Client() as client:
-            response = client.delete(f"{BACKEND_URL}/api/agents/{agent_id}")
+            response = client.delete(f"{BACKEND_URL.rstrip('/')}/api/agents/{agent_id}")
         
         if response.status_code in [200, 204]:
             return f"✅ Agent '{agent_id}' supprimé avec succès !"
@@ -130,7 +130,7 @@ def search_agent(
         import httpx
         
         with httpx.Client() as client:
-            response = client.get(f"{BACKEND_URL}/api/agents")
+            response = client.get(f"{BACKEND_URL.rstrip('/')}/api/agents")
         
         if response.status_code == 200:
             agents = response.json()
