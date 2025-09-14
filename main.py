@@ -40,3 +40,26 @@ async def get_state():
     else:
         # Return empty state if file doesn't exist
         return JSONResponse(content={"characters": {}})
+
+@app.get("/api/overlays")
+async def get_overlays():
+    """Get list of available overlays"""
+    overlays_file = "static/overlays.json"
+
+    if os.path.exists(overlays_file):
+        with open(overlays_file, 'r') as f:
+            overlays = json.load(f)
+        return JSONResponse(content={"overlays": overlays})
+    else:
+        # Check if default overlay exists
+        default_overlay = "static/overlay.png"
+        if os.path.exists(default_overlay):
+            return JSONResponse(content={
+                "overlays": [{
+                    "theme": "Default",
+                    "path": "/static/overlay.png",
+                    "active": True
+                }]
+            })
+        else:
+            return JSONResponse(content={"overlays": []})

@@ -51,14 +51,19 @@
             <!-- Overlay Settings -->
             <div class="panel-section">
                 <h3>Overlay Settings</h3>
+                <label class="label-row">
+                    <span>Theme:</span>
+                    <select id="overlaySelect" onchange="changeOverlay(this.value)" class="panel-select">
+                    </select>
+                </label>
                 <label class="checkbox-label">
-                    <input type="checkbox" id="showOverlay" onchange="toggleOverlay()">
+                    <input type="checkbox" id="showOverlay" onchange="toggleOverlay()" checked>
                     <span>Show Overlay</span>
                 </label>
                 <label class="label-row">
                     <span>Opacity:</span>
-                    <input type="range" id="overlayOpacity" min="0" max="100" value="50" oninput="updateOverlayOpacity(this.value)">
-                    <span id="opacityValue">50%</span>
+                    <input type="range" id="overlayOpacity" min="0" max="100" value="100" oninput="updateOverlayOpacity(this.value)">
+                    <span id="opacityValue">100%</span>
                 </label>
                 <label class="label-row">
                     <span>Layer:</span>

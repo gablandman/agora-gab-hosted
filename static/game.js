@@ -60,8 +60,8 @@ class HabboGame {
         // Overlay settings
         this.overlayImage = null;
         this.overlayLoaded = false;
-        this.showOverlay = false;
-        this.overlayOpacity = 0.5;
+        this.showOverlay = true;
+        this.overlayOpacity = 1.0;
         this.overlayLayer = 'background'; // 'background' or 'foreground'
 
         this.init();
@@ -69,7 +69,7 @@ class HabboGame {
 
     async init() {
         await this.loadCharacterList();
-        this.loadOverlayImage();
+        await this.loadOverlayList();
         this.setupControls();
         this.setupResizeHandler();
         this.startGameLoop();
@@ -135,20 +135,49 @@ class HabboGame {
         window.addEventListener('resize', resizeCanvas);
     }
 
-    loadOverlayImage() {
+    loadOverlayImage(path = '/static/overlay.png') {
         // Load the overlay image if it exists
         const img = new Image();
         img.onload = () => {
             this.overlayImage = img;
             this.overlayLoaded = true;
-            console.log('Overlay image loaded');
+            console.log('Overlay image loaded:', path);
             this.render();
         };
         img.onerror = () => {
-            console.log('No overlay image found or failed to load');
+            console.log('No overlay image found or failed to load:', path);
         };
-        // You can change this path to load your custom overlay
-        img.src = '/static/overlay.png';
+        img.src = path;
+    }
+
+    async loadOverlayList() {
+        try {
+            const response = await fetch('/api/overlays');
+            const data = await response.json();
+
+            const select = document.getElementById('overlaySelect');
+            if (select && data.overlays) {
+                select.innerHTML = '<option value="">None</option>';
+
+                data.overlays.forEach(overlay => {
+                    const option = document.createElement('option');
+                    option.value = overlay.path;
+                    option.textContent = overlay.theme;
+                    if (overlay.active) {
+                        option.selected = true;
+                    }
+                    select.appendChild(option);
+                });
+
+                // Load the active overlay if there is one
+                const activeOverlay = data.overlays.find(o => o.active);
+                if (activeOverlay) {
+                    this.loadOverlayImage(activeOverlay.path);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to load overlay list:', error);
+        }
     }
 
     startStatePolling() {
@@ -1504,13 +1533,13 @@ class HabboGame {
             }
         }
 
-        // Draw overlay in background layer if set
+        // Draw the door entrance first
+        this.drawDoor();
+
+        // Draw overlay in background layer if set (after door so it covers it)
         if (this.overlayLayer === 'background') {
             this.drawOverlay();
         }
-
-        // Draw the door entrance
-        this.drawDoor();
 
         // Collect all characters with their positions for depth sorting
         const charactersToRender = [];
@@ -1679,5 +1708,28 @@ function updateOverlayOpacity(value) {
 function updateOverlayLayer(layer) {
     if (!gameInstance) return;
     gameInstance.overlayLayer = layer;
+    gameInstance.render();
+}
+
+function changeOverlay(overlayPath) {
+    if (!gameInstance) return;
+
+    if (overlayPath && overlayPath !== '') {
+        // Load the new overlay
+        gameInstance.loadOverlayImage(overlayPath);
+        gameInstance.showOverlay = true;
+
+        // Update the checkbox to reflect the state
+        const checkbox = document.getElementById('showOverlay');
+        if (checkbox) checkbox.checked = true;
+    } else {
+        // No overlay selected, hide it
+        gameInstance.showOverlay = false;
+
+        // Update the checkbox to reflect the state
+        const checkbox = document.getElementById('showOverlay');
+        if (checkbox) checkbox.checked = false;
+    }
+
     gameInstance.render();
 }

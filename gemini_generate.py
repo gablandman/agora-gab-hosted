@@ -266,11 +266,130 @@ def generate_character(description, character_id=None):
         print(f"Error in character generation: {e}")
         return None
 
+def generate_overlay(theme_description, reference_image_path="static/screenshot.png"):
+    """
+    Generate a room overlay based on a theme description
+
+    Args:
+        theme_description: Text description of the room theme (e.g., "tropical beach", "space station")
+        reference_image_path: Path to the reference screenshot showing the grid and door
+
+    Returns:
+        Path to the saved overlay image, or None if failed
+    """
+    try:
+        # Check if reference image exists
+        if not os.path.exists(reference_image_path):
+            print(f"Error: Reference image not found at {reference_image_path}")
+            print("Please take a screenshot of the game first!")
+            return None
+
+        # Load overlay prompt template
+        overlay_prompt_path = "overlay-prompt.md"
+        if not os.path.exists(overlay_prompt_path):
+            print(f"Error: Overlay prompt template not found at {overlay_prompt_path}")
+            return None
+
+        with open(overlay_prompt_path, 'r') as f:
+            prompt_template = f.read()
+
+        # Extract just the prompt part (between triple backticks)
+        import re
+        match = re.search(r'```\n(.*?)\n```', prompt_template, re.DOTALL)
+        if match:
+            prompt_template = match.group(1)
+
+        # Replace [YOUR THEME] with the actual theme
+        prompt = prompt_template.replace('[YOUR THEME]', theme_description)
+
+        print(f"Generating overlay with theme: {theme_description}")
+
+        # Load reference image
+        ref_img = Image.open(reference_image_path)
+
+        # Generate overlay using Gemini
+        model = "gemini-2.5-flash-image-preview"
+        gemini_model = genai.GenerativeModel(model)
+
+        response = gemini_model.generate_content([prompt, ref_img])
+
+        # Process response to extract generated image
+        if response.candidates and response.candidates[0].content.parts:
+            for part in response.candidates[0].content.parts:
+                if hasattr(part, 'inline_data') and part.inline_data:
+                    # Save the generated image
+                    img_data = part.inline_data.data
+                    img = Image.open(BytesIO(img_data))
+
+                    # Check if there's an existing overlay and rename it
+                    overlay_path = "static/overlay.png"
+                    if os.path.exists(overlay_path):
+                        # Create timestamp for backup
+                        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+                        # Create safe filename from theme
+                        safe_theme = re.sub(r'[^a-zA-Z0-9_-]', '_', theme_description)[:50]
+                        backup_path = f"static/overlay_{safe_theme}_{timestamp}.png"
+                        os.rename(overlay_path, backup_path)
+                        print(f"✓ Previous overlay backed up to: {backup_path}")
+
+                    # Save new overlay
+                    img.save(overlay_path)
+                    print(f"✓ New overlay saved to: {overlay_path}")
+
+                    # Also save a list of all overlays
+                    update_overlay_list(theme_description, overlay_path)
+
+                    return overlay_path
+
+        print("No overlay was generated in the response")
+        return None
+
+    except Exception as e:
+        print(f"Error generating overlay: {e}")
+        return None
+
+def update_overlay_list(theme, path):
+    """
+    Update the JSON file tracking all overlays
+    """
+    overlays_file = "static/overlays.json"
+
+    try:
+        # Load existing overlays
+        if os.path.exists(overlays_file):
+            with open(overlays_file, 'r') as f:
+                overlays = json.load(f)
+        else:
+            overlays = []
+
+        # Add new overlay entry
+        overlay_entry = {
+            "theme": theme,
+            "path": path,
+            "timestamp": datetime.now().isoformat(),
+            "active": True  # Mark as active since it's the newest
+        }
+
+        # Mark all others as inactive
+        for overlay in overlays:
+            overlay["active"] = False
+
+        overlays.append(overlay_entry)
+
+        # Save updated list
+        with open(overlays_file, 'w') as f:
+            json.dump(overlays, f, indent=2)
+
+        print(f"✓ Overlay list updated: {overlays_file}")
+
+    except Exception as e:
+        print(f"Warning: Could not update overlay list: {e}")
+
 # Example usage
 if __name__ == "__main__":
     # Test character generation
     character_result = generate_character(
-        description="Young boy with blond hair curtains haircut black shirt and jeans and a blue wristband"
+        description="A young boy with a moustache and a short beard a grey winter jacket and black pants"
     )
 
     if character_result:
@@ -282,6 +401,13 @@ if __name__ == "__main__":
                 print(f"  - {key}: {path}")
     else:
         print("❌ Failed to generate character")
+
+    # Test overlay generation (uncomment to test)
+    # overlay_result = generate_overlay("tropical beach paradise")
+    # if overlay_result:
+    #     print(f"✅ Overlay generated: {overlay_result}")
+    # else:
+    #     print("❌ Failed to generate overlay")
 
     # Original example (commented out)
     # result = generate_image(
