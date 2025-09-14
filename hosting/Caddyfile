@@ -1,0 +1,3 @@
+agoragents.dev {
+    reverse_proxy localhost:9999
+}

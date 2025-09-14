@@ -155,3 +155,23 @@ class AgentService:
             return action
 
         return None
+
+    async def clear_all_agents(self) -> int:
+        """Delete all agents and return count of deleted agents"""
+        agents = await self.list_agents()
+        deleted_count = 0
+
+        for agent in agents:
+            try:
+                # Delete from Mistral if we have the ID
+                if agent.mistral_id:
+                    await self.mistral.delete_agent(agent.mistral_id)
+
+                # Delete from storage
+                if await self.storage.delete_agent(agent.id):
+                    deleted_count += 1
+                    print(f"Deleted agent: {agent.name} ({agent.id})")
+            except Exception as e:
+                print(f"Error deleting agent {agent.id}: {e}")
+
+        return deleted_count

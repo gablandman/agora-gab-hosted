@@ -76,6 +76,14 @@ async def get_agent(
         action_count=len(agent.action_history)
     )
 
+@router.delete("/all")
+async def clear_all_agents(
+    agent_service: AgentService = Depends(get_agent_service)
+):
+    """Delete all agents"""
+    deleted_count = await agent_service.clear_all_agents()
+    return {"message": f"Deleted {deleted_count} agents", "count": deleted_count}
+
 @router.delete("/{agent_id}")
 async def delete_agent(
     agent_id: str,

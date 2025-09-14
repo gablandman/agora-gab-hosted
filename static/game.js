@@ -2085,6 +2085,39 @@ async function deleteAgent(agentId) {
     }
 }
 
+async function clearAllAgents() {
+    if (!confirm('Are you sure you want to delete ALL agents? This action cannot be undone.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/agents/all', {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log('All agents cleared:', result);
+            alert(`Successfully deleted ${result.count} agents`);
+
+            // Clear the NPCs from the game
+            if (gameInstance) {
+                gameInstance.npcs = {};
+                gameInstance.render();
+            }
+
+            // Reload the agents list
+            loadAgentsList();
+        } else {
+            const error = await response.json();
+            alert(`Failed to clear agents: ${error.detail}`);
+        }
+    } catch (error) {
+        console.error('Error clearing agents:', error);
+        alert('Failed to clear agents');
+    }
+}
+
 async function loadAgentsList() {
     try {
         const response = await fetch('/api/agents');
