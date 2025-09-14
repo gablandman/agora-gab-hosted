@@ -10,10 +10,6 @@
     <div class="game-container">
         <h1>Habbo Room Simulator</h1>
         <canvas id="gameCanvas" width="800" height="600"></canvas>
-        <div class="chat-controls">
-            <input type="text" id="chatInput" placeholder="Type a message..." maxlength="100">
-            <button id="sayButton">Say</button>
-        </div>
     </div>
 
     <!-- Side Panel -->
@@ -23,6 +19,13 @@
         </button>
         <div class="panel-content">
             <h2>Controls</h2>
+
+            <!-- Chat Section -->
+            <div class="panel-section">
+                <h3>Chat</h3>
+                <input type="text" id="chatInput" class="panel-input" placeholder="Type a message..." maxlength="100">
+                <button id="sayButton" class="panel-btn">Say</button>
+            </div>
 
             <!-- Character Selection -->
             <div class="panel-section">

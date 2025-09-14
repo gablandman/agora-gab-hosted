@@ -127,50 +127,6 @@ h1 {
     color: #666;
 }
 
-.chat-controls {
-    display: flex;
-    gap: 10px;
-    padding: 10px;
-    background: #f5f5f5;
-    border-radius: 10px;
-    margin-top: 10px;
-}
-
-#chatInput {
-    flex: 1;
-    padding: 10px;
-    border: 2px solid #ddd;
-    border-radius: 8px;
-    font-size: 14px;
-    transition: border-color 0.3s;
-}
-
-#chatInput:focus {
-    outline: none;
-    border-color: #4A90E2;
-}
-
-#sayButton {
-    padding: 10px 20px;
-    background: #4CAF50;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.3s ease;
-}
-
-#sayButton:hover {
-    background: #45a049;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-}
-
-#sayButton:active {
-    transform: translateY(0);
-}
 
 /* Side Panel Styles */
 .side-panel {
@@ -269,6 +225,22 @@ h1 {
 }
 
 .panel-select:focus {
+    outline: none;
+    border-color: #4A90E2;
+}
+
+.panel-input {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    transition: border-color 0.3s;
+    margin-bottom: 10px;
+}
+
+.panel-input:focus {
     outline: none;
     border-color: #4A90E2;
 }
