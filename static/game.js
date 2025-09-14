@@ -64,6 +64,11 @@ class HabboGame {
         this.overlayOpacity = 1.0;
         this.overlayLayer = 'background'; // 'background' or 'foreground'
 
+        // Display size settings
+        this.nameSize = 1.0; // Scale factor for name displays
+        this.bubbleSize = 1.0; // Scale factor for speech bubbles
+        this.showNameTags = true; // Whether to show name tags
+
         this.init();
     }
 
@@ -994,17 +999,17 @@ class HabboGame {
     }
 
     drawNameTag(name, x, y) {
-        // Set up text style - larger font for better readability
-        const fontSize = Math.max(14, 12 * this.scale);
+        // Set up text style - larger font for better readability, scaled by nameSize
+        const fontSize = Math.max(14, 12 * this.scale) * this.nameSize;
         this.ctx.font = `bold ${fontSize}px Arial`;
         this.ctx.textAlign = 'center';
 
         // Measure text
         const metrics = this.ctx.measureText(name);
         const textWidth = metrics.width;
-        const padding = 6;
+        const padding = 6 * this.nameSize;
         const bgWidth = textWidth + padding * 2;
-        const bgHeight = fontSize + 8;
+        const bgHeight = fontSize + 8 * this.nameSize;
 
         // Draw background with rounded corners
         const bgX = x - bgWidth / 2;
@@ -1089,9 +1094,10 @@ class HabboGame {
         if (npc.speechBubbles.length === 0) return;
 
         const pos = this.isoToScreen(x, y);
-        const padding = 12; // Increased padding for larger text
+        const padding = 12; // Fixed padding
         const maxWidth = 200;
-        const lineHeight = 24; // Increased for larger font
+        const fontSize = Math.max(18, 16 * this.scale) * this.bubbleSize; // Only scale font size
+        const lineHeight = fontSize * 1.3; // Line height based on font size
         const bubbleSpacing = 5;
         const radius = 10;
 
@@ -1100,7 +1106,6 @@ class HabboGame {
         const bubblesData = [];
 
         npc.speechBubbles.forEach((bubble) => {
-            const fontSize = Math.max(18, 16 * this.scale);
             this.ctx.font = `${fontSize}px Arial`;
             const words = bubble.text.split(' ');
             const lines = [];
@@ -1184,11 +1189,11 @@ class HabboGame {
 
             // Draw text - larger and darker for better readability
             this.ctx.fillStyle = '#000';
-            const fontSize = Math.max(18, 16 * this.scale);
             this.ctx.font = `${fontSize}px Arial`;
             lines.forEach((line, lineIndex) => {
                 const textX = bubbleX + padding;
-                const textY = bubbleY + padding + (lineIndex + 1) * lineHeight - 2;
+                // Center text vertically by using proper baseline calculation
+                const textY = bubbleY + padding + lineIndex * lineHeight + fontSize * 0.75;
                 this.ctx.fillText(line, textX, textY);
             });
 
@@ -1360,9 +1365,10 @@ class HabboGame {
         if (this.speechBubbles.length === 0) return;
 
         const pos = this.isoToScreen(x, y);
-        const padding = 12; // Increased padding for larger text
+        const padding = 12; // Fixed padding
         const maxWidth = 200;
-        const lineHeight = 24; // Increased for larger font
+        const fontSize = Math.max(18, 16 * this.scale) * this.bubbleSize; // Only scale font size
+        const lineHeight = fontSize * 1.3; // Line height based on font size
         const bubbleSpacing = 5;
         const radius = 10;
 
@@ -1371,7 +1377,6 @@ class HabboGame {
         const bubblesData = [];
 
         this.speechBubbles.forEach((bubble) => {
-            const fontSize = Math.max(18, 16 * this.scale);
             this.ctx.font = `${fontSize}px Arial`;
             const words = bubble.text.split(' ');
             const lines = [];
@@ -1461,11 +1466,11 @@ class HabboGame {
 
             // Draw text - larger and darker for better readability
             this.ctx.fillStyle = '#000';
-            const fontSize = Math.max(18, 16 * this.scale);
             this.ctx.font = `${fontSize}px Arial`;
             lines.forEach((line, lineIndex) => {
                 const textX = bubbleX + padding;
-                const textY = bubbleY + padding + (lineIndex + 1) * lineHeight - 2;
+                // Center text vertically by using proper baseline calculation
+                const textY = bubbleY + padding + lineIndex * lineHeight + fontSize * 0.75;
                 this.ctx.fillText(line, textX, textY);
             });
 
@@ -1596,10 +1601,12 @@ class HabboGame {
         }
 
         // Draw all name tags in a separate pass (ensures they appear above all characters)
-        for (const char of charactersToRender) {
-            const pos = this.isoToScreen(char.x, char.y);
-            const name = char.type === 'player' ? this.player.name : char.npc.name;
-            this.drawNameTag(name, pos.x, pos.y + (35 * this.scale));
+        if (this.showNameTags) {
+            for (const char of charactersToRender) {
+                const pos = this.isoToScreen(char.x, char.y);
+                const name = char.type === 'player' ? this.player.name : char.npc.name;
+                this.drawNameTag(name, pos.x, pos.y + (35 * this.scale));
+            }
         }
 
         // Draw overlay in foreground layer if set
@@ -1704,7 +1711,15 @@ function toggleAllCharactersVisibility() {
 // Toggle side panel
 function toggleSidePanel() {
     const panel = document.getElementById('sidePanel');
+    const body = document.body;
     panel.classList.toggle('collapsed');
+
+    // Toggle body class to adjust canvas position
+    if (panel.classList.contains('collapsed')) {
+        body.classList.remove('panel-expanded');
+    } else {
+        body.classList.add('panel-expanded');
+    }
 }
 
 // Overlay control functions
@@ -1725,6 +1740,26 @@ function updateOverlayOpacity(value) {
 function updateOverlayLayer(layer) {
     if (!gameInstance) return;
     gameInstance.overlayLayer = layer;
+    gameInstance.render();
+}
+
+function updateNameSize(value) {
+    if (!gameInstance) return;
+    gameInstance.nameSize = value / 100;
+    document.getElementById('nameSizeValue').textContent = value + '%';
+    gameInstance.render();
+}
+
+function updateBubbleSize(value) {
+    if (!gameInstance) return;
+    gameInstance.bubbleSize = value / 100;
+    document.getElementById('bubbleSizeValue').textContent = value + '%';
+    gameInstance.render();
+}
+
+function toggleNameTags() {
+    if (!gameInstance) return;
+    gameInstance.showNameTags = document.getElementById('showNameTags').checked;
     gameInstance.render();
 }
 

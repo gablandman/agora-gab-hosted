@@ -3,17 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Habbo-like Game</title>
+    <title>Agora Simulator</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='75' font-size='75'>💬</text></svg>">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://www.nerdfonts.com/assets/css/webfont.css">
     <link rel="stylesheet" href="/static/styles.css">
 </head>
 <body>
-    <div class="game-container">
-        <h1>Habbo Room Simulator</h1>
-        <canvas id="gameCanvas"></canvas>
-    </div>
+    <h1><i class="nf nf-oct-comment_discussion"></i> Agora Simulator</h1>
+    <canvas id="gameCanvas"></canvas>
 
     <!-- Side Panel -->
-    <div id="sidePanel" class="side-panel">
+    <div id="sidePanel" class="side-panel collapsed">
         <button id="togglePanel" class="toggle-panel-btn" onclick="toggleSidePanel()">
             <span class="chevron">▶</span>
         </button>
@@ -45,6 +48,25 @@
                 <label class="checkbox-label">
                     <input type="checkbox" id="hideAllCharacters" onchange="toggleAllCharactersVisibility()">
                     <span>Hide All Characters</span>
+                </label>
+            </div>
+
+            <!-- Display Settings -->
+            <div class="panel-section">
+                <h3>Display Settings</h3>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="showNameTags" onchange="toggleNameTags()" checked>
+                    <span>Show Name Tags</span>
+                </label>
+                <label class="label-row">
+                    <span>Name Size:</span>
+                    <input type="range" id="nameSize" min="50" max="200" value="100" oninput="updateNameSize(this.value)">
+                    <span id="nameSizeValue">100%</span>
+                </label>
+                <label class="label-row">
+                    <span>Bubble Text:</span>
+                    <input type="range" id="bubbleSize" min="50" max="200" value="100" oninput="updateBubbleSize(this.value)">
+                    <span id="bubbleSizeValue">100%</span>
                 </label>
             </div>
 

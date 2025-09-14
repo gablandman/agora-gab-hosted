@@ -5,38 +5,43 @@
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    font-family: 'Sora', sans-serif;
+    background: #FAF6F0; /* Cream color */
     min-height: 100vh;
-    display: flex;
-    justify-content: center;
-    align-items: center;
+    padding: 40px;
+    transition: padding-right 0.3s ease;
 }
 
-.game-container {
-    background: white;
-    border-radius: 20px;
-    padding: 20px;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    text-align: center;
-    width: 90%;
-    max-width: 1400px;
-    margin: 0 auto;
+body.panel-expanded {
+    padding-right: 420px;
 }
+
 
 h1 {
-    color: #333;
-    margin-bottom: 20px;
-    font-size: 28px;
+    color: #000;
+    margin-bottom: 100px;
+    font-size: 48px;
+    font-weight: 800;
+    font-family: 'Sora', sans-serif;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    text-align: center;
+}
+
+h1 .nf {
+    font-size: 52px;
 }
 
 #gameCanvas {
-    border: 2px solid #ddd;
-    border-radius: 10px;
+    border: 5px solid #000;
+    border-radius: 0;
     background: white;
     display: block;
-    margin: 0 auto 20px;
+    margin: 0 auto;
     cursor: pointer;
+    box-shadow: 8px 8px 0 rgba(0, 0, 0, 1);
 }
 
 .controls {
@@ -134,12 +139,13 @@ h1 {
 /* Side Panel Styles */
 .side-panel {
     position: fixed;
-    top: 0;
-    right: 0;
-    width: 300px;
-    height: 100vh;
+    top: 20px;
+    right: 20px;
+    width: 380px;
+    height: calc(100vh - 40px);
     background: white;
-    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    border: 4px solid #000;
+    box-shadow: 8px 8px 0 rgba(0, 0, 0, 1);
     transition: transform 0.3s ease;
     z-index: 1000;
     overflow-y: auto;
@@ -147,35 +153,40 @@ h1 {
 }
 
 .side-panel.collapsed {
-    transform: translateX(250px);
+    transform: translateX(330px);
     background: transparent;
     box-shadow: none;
+    border: none;
+    overflow: hidden;
 }
 
 .toggle-panel-btn {
     position: absolute;
     left: 10px;
     top: 10px;
-    width: 30px;
-    height: 30px;
-    background: #f0f0f0;
-    border: 1px solid #ddd;
-    border-radius: 5px;
+    width: 35px;
+    height: 35px;
+    background: transparent;
+    border: 3px solid #000;
+    border-radius: 0;
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     z-index: 10;
+    box-shadow: 3px 3px 0 rgba(0, 0, 0, 1);
 }
 
 .toggle-panel-btn:hover {
-    background: #f5f5f5;
+    background: rgba(0, 0, 0, 0.05);
+    transform: translate(-2px, -2px);
+    box-shadow: 5px 5px 0 rgba(0, 0, 0, 1);
 }
 
 .chevron {
     font-size: 20px;
-    color: #666;
+    color: #000;
     transition: transform 0.3s ease;
 }
 
@@ -206,7 +217,8 @@ h1 {
     margin-bottom: 25px;
     padding: 15px;
     background: #f9f9f9;
-    border-radius: 8px;
+    border: 2px solid #000;
+    border-radius: 0;
 }
 
 .panel-section h3 {
@@ -218,58 +230,105 @@ h1 {
 .panel-select {
     width: 100%;
     padding: 8px;
-    border: 2px solid #ddd;
-    border-radius: 6px;
+    border: 3px solid #000;
+    border-radius: 0;
     font-size: 14px;
     background: white;
     cursor: pointer;
-    transition: border-color 0.3s;
+    transition: all 0.2s;
     margin-bottom: 10px;
+    font-family: 'Sora', sans-serif;
 }
 
 .panel-select:focus {
     outline: none;
-    border-color: #4A90E2;
+    background: #FFF9E6;
 }
 
 .panel-input {
     width: 100%;
     padding: 8px;
-    border: 2px solid #ddd;
-    border-radius: 6px;
+    border: 3px solid #000;
+    border-radius: 0;
     font-size: 14px;
     background: white;
-    transition: border-color 0.3s;
+    transition: all 0.2s;
     margin-bottom: 10px;
+    font-family: 'Sora', sans-serif;
 }
 
 .panel-input:focus {
     outline: none;
-    border-color: #4A90E2;
+    background: #FFF9E6;
 }
 
 .panel-btn {
     width: 100%;
     padding: 10px;
-    background: #4A90E2;
-    color: white;
-    border: none;
-    border-radius: 6px;
+    background: #4ECDC4;
+    color: #000;
+    border: 3px solid #000;
+    border-radius: 0;
     font-size: 14px;
     font-weight: bold;
     cursor: pointer;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     margin-bottom: 8px;
+    font-family: 'Sora', sans-serif;
+    box-shadow: 4px 4px 0 rgba(0, 0, 0, 1);
 }
 
 .panel-btn:hover {
-    background: #357ABD;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    background: #3FBDB4;
+    transform: translate(-2px, -2px);
+    box-shadow: 6px 6px 0 rgba(0, 0, 0, 1);
+}
+
+/* Specific button colors */
+#sayButton {
+    background: #FF6B6B;
+}
+
+#sayButton:hover {
+    background: #FF5252;
+}
+
+#loadCharacterBtn {
+    background: #4ECDC4;
+}
+
+#loadCharacterBtn:hover {
+    background: #3FBDB4;
+}
+
+/* Test buttons have their own color scheme */
+.test-buttons .panel-btn {
+    background: #A8E6CF;
+}
+
+.test-buttons .panel-btn:hover {
+    background: #92D8BE;
+}
+
+.test-buttons .panel-btn:nth-child(3n+1) {
+    background: #FFD3B6;
+}
+
+.test-buttons .panel-btn:nth-child(3n+1):hover {
+    background: #FFC4A3;
+}
+
+.test-buttons .panel-btn:nth-child(3n+2) {
+    background: #C7CEEA;
+}
+
+.test-buttons .panel-btn:nth-child(3n+2):hover {
+    background: #B7BFE5;
 }
 
 .panel-btn:active {
-    transform: translateY(0);
+    transform: translate(2px, 2px);
+    box-shadow: 2px 2px 0 rgba(0, 0, 0, 1);
 }
 
 .checkbox-label {
@@ -311,16 +370,17 @@ h1 {
     width: auto;
     flex: 1;
     padding: 6px;
-    border: 2px solid #ddd;
-    border-radius: 6px;
+    border: 3px solid #000;
+    border-radius: 0;
     font-size: 14px;
     background: white;
     cursor: pointer;
-    transition: border-color 0.3s;
+    transition: all 0.2s;
+    font-family: 'Sora', sans-serif;
 }
 
 .panel-select-small:focus {
     outline: none;
-    border-color: #4A90E2;
+    background: #FFF9E6;
 }
 
