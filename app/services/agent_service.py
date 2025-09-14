@@ -1,4 +1,6 @@
 import uuid
+import sys
+import os
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 from app.models.agent import Agent, AgentCreate, AgentResponse
@@ -6,6 +8,10 @@ from app.models.action import Action
 from app.services.storage_service import StorageService
 from app.services.mistral_service import MistralService
 from app.config import settings
+
+# Add parent directory to path to import gemini_generate
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
+from gemini_generate import generate_character
 
 class AgentService:
     def __init__(self, storage_service: StorageService, mistral_service: MistralService):
@@ -34,6 +40,35 @@ class AgentService:
         except Exception as e:
             raise ValueError(f"Failed to create Mistral agent: {str(e)}")
 
+        # Generate character sprites based on agent description
+        character_id = None
+        try:
+            # Create a character description from name and instructions
+            # We'll use the instructions as they contain the personality/appearance details
+            character_description = f"{agent_data.name}: {agent_data.instructions}"
+
+            # Run character generation in a separate thread to avoid event loop issues
+            import concurrent.futures
+            import asyncio
+
+            def run_generation():
+                return generate_character(
+                    description=character_description,
+                    character_id=agent_id  # Use same ID for easy matching
+                )
+
+            # Execute in thread pool to avoid event loop conflicts
+            with concurrent.futures.ThreadPoolExecutor() as executor:
+                future = executor.submit(run_generation)
+                character_result = future.result(timeout=60)  # 60 second timeout
+
+            if character_result:
+                character_id = character_result.get('character_id', agent_id)
+                print(f"✓ Generated character sprites for agent {agent_data.name} with ID: {character_id}")
+        except Exception as e:
+            print(f"Warning: Failed to generate character sprites: {str(e)}")
+            # Continue without sprites - not critical for agent creation
+
         # Create agent object (store original name without prefix locally)
         agent = Agent(
             id=agent_id,
@@ -41,6 +76,7 @@ class AgentService:
             mistral_id=mistral_id,
             model=agent_data.model or settings.MISTRAL_MODEL,
             instructions=agent_data.instructions,
+            character_id=character_id,  # Store the character sprite ID
             temperature=agent_data.temperature or settings.MISTRAL_TEMPERATURE,
             created_at=datetime.now(),
             visible=False,  # Start invisible

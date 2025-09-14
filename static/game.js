@@ -263,7 +263,8 @@ class HabboGame {
         for (const [charId, charData] of Object.entries(characters)) {
             // Create NPC if it doesn't exist (only for visible characters)
             if (!this.npcs[charId] && charData.visible !== false) {
-                this.createNPC(charId, charData.name);
+                // Pass character_id if available from the state
+                this.createNPC(charId, charData.name, charData.character_id);
             }
 
             // Get the action (if any)
@@ -288,17 +289,21 @@ class HabboGame {
         }
     }
 
-    createNPC(charId, name) {
+    createNPC(charId, name, characterId = null) {
         // Pick a random starting position
         const x = Math.floor(Math.random() * this.roomWidth);
         const y = Math.floor(Math.random() * this.roomHeight);
 
-        // Pick a random character skin from available characters
-        let characterSkinId = null;
-        const select = document.getElementById('characterSelect');
-        if (select && select.options.length > 0) {
-            const randomIndex = Math.floor(Math.random() * select.options.length);
-            characterSkinId = select.options[randomIndex].value;
+        // Use the provided characterId if available, otherwise fall back to random selection
+        let characterSkinId = characterId;
+
+        // Only pick a random skin if no characterId was provided
+        if (!characterSkinId) {
+            const select = document.getElementById('characterSelect');
+            if (select && select.options.length > 0) {
+                const randomIndex = Math.floor(Math.random() * select.options.length);
+                characterSkinId = select.options[randomIndex].value;
+            }
         }
 
         this.npcs[charId] = {

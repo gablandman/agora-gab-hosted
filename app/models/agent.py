@@ -9,6 +9,7 @@ class Agent(BaseModel):
     mistral_id: Optional[str] = None
     model: str = "mistral-medium-latest"
     instructions: str
+    character_id: Optional[str] = None  # ID for generated character sprites
     visible: bool = False  # Start invisible, will enter on next turn
     temperature: float = 0.7
     created_at: datetime = Field(default_factory=datetime.now)
@@ -33,6 +34,7 @@ class AgentResponse(BaseModel):
     mistral_id: Optional[str]
     model: str
     instructions: str
+    character_id: Optional[str]
     visible: bool
     temperature: float
     created_at: str

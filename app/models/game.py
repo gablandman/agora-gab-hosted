@@ -5,6 +5,7 @@ from .action import GameAction
 
 class Character(BaseModel):
     name: str
+    character_id: Optional[str] = None  # ID for generated character sprites
     action: Optional[GameAction] = None
 
 class GameState(BaseModel):

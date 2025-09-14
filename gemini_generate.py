@@ -196,11 +196,21 @@ def generate_character(description, character_id=None):
 
             return await asyncio.gather(*tasks)
 
-        # Run async generation
-        loop = asyncio.get_event_loop() if asyncio.get_event_loop().is_running() else asyncio.new_event_loop()
-        if not asyncio.get_event_loop().is_running():
-            generation_results = loop.run_until_complete(generate_all_directions())
-        else:
+        # Run async generation - handle both sync and async contexts
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # We're in an async context, use asyncio.run in a new thread
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(asyncio.run, generate_all_directions())
+                    generation_results = future.result()
+            else:
+                # We're in a sync context, run normally
+                generation_results = loop.run_until_complete(generate_all_directions())
+        except RuntimeError:
+            # No event loop, create one
             generation_results = asyncio.run(generate_all_directions())
 
         # Process results and create flipped versions

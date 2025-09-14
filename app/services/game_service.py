@@ -31,6 +31,7 @@ class GameService:
 
                 characters[agent.id] = Character(
                     name=agent.name,
+                    character_id=getattr(agent, 'character_id', None),
                     action=recent_action
                 )
 

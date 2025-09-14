@@ -1,4 +1,4 @@
 *.pyc
 .env
 cache/
-agents/
+agents/*
