@@ -9,7 +9,7 @@
 <body>
     <div class="game-container">
         <h1>Habbo Room Simulator</h1>
-        <canvas id="gameCanvas" width="800" height="600"></canvas>
+        <canvas id="gameCanvas"></canvas>
     </div>
 
     <!-- Side Panel -->
@@ -45,6 +45,27 @@
                 <label class="checkbox-label">
                     <input type="checkbox" id="hideAllCharacters" onchange="toggleAllCharactersVisibility()">
                     <span>Hide All Characters</span>
+                </label>
+            </div>
+
+            <!-- Overlay Settings -->
+            <div class="panel-section">
+                <h3>Overlay Settings</h3>
+                <label class="checkbox-label">
+                    <input type="checkbox" id="showOverlay" onchange="toggleOverlay()">
+                    <span>Show Overlay</span>
+                </label>
+                <label class="label-row">
+                    <span>Opacity:</span>
+                    <input type="range" id="overlayOpacity" min="0" max="100" value="50" oninput="updateOverlayOpacity(this.value)">
+                    <span id="opacityValue">50%</span>
+                </label>
+                <label class="label-row">
+                    <span>Layer:</span>
+                    <select id="overlayLayer" onchange="updateOverlayLayer(this.value)" class="panel-select-small">
+                        <option value="background">Background</option>
+                        <option value="foreground">Foreground</option>
+                    </select>
                 </label>
             </div>
 

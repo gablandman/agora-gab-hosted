@@ -19,6 +19,9 @@ body {
     padding: 20px;
     box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     text-align: center;
+    width: 90%;
+    max-width: 1400px;
+    margin: 0 auto;
 }
 
 h1 {
@@ -287,5 +290,37 @@ h1 {
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
+}
+
+.label-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.label-row span {
+    min-width: 60px;
+}
+
+.label-row input[type="range"] {
+    flex: 1;
+}
+
+.panel-select-small {
+    width: auto;
+    flex: 1;
+    padding: 6px;
+    border: 2px solid #ddd;
+    border-radius: 6px;
+    font-size: 14px;
+    background: white;
+    cursor: pointer;
+    transition: border-color 0.3s;
+}
+
+.panel-select-small:focus {
+    outline: none;
+    border-color: #4A90E2;
 }
 

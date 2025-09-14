@@ -5,8 +5,11 @@ class HabboGame {
 
         this.roomWidth = 10;
         this.roomHeight = 10;
-        this.tileWidth = 64;
-        this.tileHeight = 32;
+        this.baseTileWidth = 64;
+        this.baseTileHeight = 32;
+        this.tileWidth = this.baseTileWidth;
+        this.tileHeight = this.baseTileHeight;
+        this.scale = 1;
 
         this.player = {
             name: 'Player',
@@ -22,8 +25,8 @@ class HabboGame {
         };
 
 
-        this.offsetX = this.canvas.width / 2;
-        this.offsetY = 150;
+        // Dynamic offset based on canvas size
+        this.updateCanvasSize();
 
 
         // Character sprites
@@ -54,15 +57,98 @@ class HabboGame {
         this.hidePlayer = false;
         this.hideAllCharacters = false;
 
+        // Overlay settings
+        this.overlayImage = null;
+        this.overlayLoaded = false;
+        this.showOverlay = false;
+        this.overlayOpacity = 0.5;
+        this.overlayLayer = 'background'; // 'background' or 'foreground'
+
         this.init();
     }
 
     async init() {
         await this.loadCharacterList();
+        this.loadOverlayImage();
         this.setupControls();
+        this.setupResizeHandler();
         this.startGameLoop();
         this.startStatePolling();
         this.render();
+    }
+
+    updateCanvasSize() {
+        // Calculate scale based on canvas size
+        const baseWidth = 800; // Base canvas width we designed for
+        const baseHeight = 600; // Base canvas height we designed for
+
+        // Use the smaller scale to ensure everything fits
+        const scaleX = this.canvas.width / baseWidth;
+        const scaleY = this.canvas.height / baseHeight;
+        this.scale = Math.min(scaleX, scaleY);
+
+        // Scale tile dimensions
+        this.tileWidth = this.baseTileWidth * this.scale;
+        this.tileHeight = this.baseTileHeight * this.scale;
+
+        // Update offsets to center the grid
+        this.offsetX = this.canvas.width / 2;
+        this.offsetY = this.canvas.height / 3; // Place grid in upper third for better view
+    }
+
+    setupResizeHandler() {
+        // Make canvas responsive with fixed aspect ratio
+        const ASPECT_RATIO = 4 / 3; // 4:3 aspect ratio (you can adjust this)
+        const MAX_WIDTH = 1200;
+        const MAX_HEIGHT = 900;
+
+        const resizeCanvas = () => {
+            const container = this.canvas.parentElement;
+            const rect = container.getBoundingClientRect();
+
+            // Calculate available space
+            const availableWidth = Math.min(rect.width - 40, MAX_WIDTH);
+            const availableHeight = Math.min(window.innerHeight - 200, MAX_HEIGHT);
+
+            // Calculate dimensions while maintaining aspect ratio
+            let canvasWidth = availableWidth;
+            let canvasHeight = canvasWidth / ASPECT_RATIO;
+
+            // If height is too big, scale based on height instead
+            if (canvasHeight > availableHeight) {
+                canvasHeight = availableHeight;
+                canvasWidth = canvasHeight * ASPECT_RATIO;
+            }
+
+            // Set the canvas size
+            this.canvas.width = Math.floor(canvasWidth);
+            this.canvas.height = Math.floor(canvasHeight);
+
+            this.updateCanvasSize();
+            this.render();
+        };
+
+        // Initial resize
+        resizeCanvas();
+
+        // Add resize listener
+        window.addEventListener('resize', resizeCanvas);
+    }
+
+    loadOverlayImage() {
+        // Load the overlay image if it exists
+        const img = new Image();
+        img.onload = () => {
+            this.overlayImage = img;
+            this.overlayLoaded = true;
+            console.log('Overlay image loaded');
+            this.render();
+        };
+        img.onerror = () => {
+            console.log('No overlay image found or failed to load');
+        };
+        // You can change this path to load your custom overlay
+        img.src = '/static/overlay.png';
     }
 
     startStatePolling() {
@@ -917,23 +1003,23 @@ class HabboGame {
             // Use the unified character drawing function
             const sprite = this.getCharacterSprite(npc.sprites, npc.direction);
             if (sprite) {
-                const scale = 0.08; // Same scale as player sprites
-                const drawWidth = sprite.width * scale;
-                const drawHeight = sprite.height * scale;
+                const spriteScale = 0.08 * this.scale; // Scale with canvas
+                const drawWidth = sprite.width * spriteScale;
+                const drawHeight = sprite.height * spriteScale;
 
                 this.ctx.drawImage(
                     sprite,
                     pos.x - drawWidth / 2,
-                    pos.y - drawHeight + 30,  // Same offset as player
+                    pos.y - drawHeight + (30 * this.scale),  // Scale offset too
                     drawWidth,
                     drawHeight
                 );
             }
         } else {
             // Fallback to simple shape if no sprites loaded
-            const offsetY = 30;
-            const charHeight = 60;
-            const charWidth = 20;
+            const offsetY = 30 * this.scale;
+            const charHeight = 60 * this.scale;
+            const charWidth = 20 * this.scale;
 
             // Different colors for different NPCs
             const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7'];
@@ -960,7 +1046,7 @@ class HabboGame {
         }
 
         // Name label with background (always show)
-        this.drawNameTag(npc.name, pos.x, pos.y + 35); // Position under feet
+        this.drawNameTag(npc.name, pos.x, pos.y + (35 * this.scale)); // Position under feet
     }
 
     drawNPCSpeechBubbles(npc, x, y) {
@@ -1015,7 +1101,7 @@ class HabboGame {
             totalHeight += bubbleHeight + bubbleSpacing;
         });
 
-        let currentY = pos.y - 85 - totalHeight;
+        let currentY = pos.y - (85 * this.scale) - totalHeight;
 
         bubblesData.reverse().forEach((data, index) => {
             const { bubble, lines, width: bubbleWidth, height: bubbleHeight } = data;
@@ -1148,9 +1234,28 @@ class HabboGame {
         this.ctx.stroke();
     }
 
+    drawOverlay() {
+        if (!this.showOverlay || !this.overlayLoaded || !this.overlayImage) return;
+
+        // Apply opacity
+        this.ctx.save();
+        this.ctx.globalAlpha = this.overlayOpacity;
+
+        // Simply draw the overlay covering the entire canvas
+        this.ctx.drawImage(
+            this.overlayImage,
+            0,
+            0,
+            this.canvas.width,
+            this.canvas.height
+        );
+
+        this.ctx.restore();
+    }
+
     drawDoor() {
         // Draw a black door in the middle of the left wall (entrance)
-        const doorHeight = 70;
+        const doorHeight = 70 * this.scale;
 
         // Position 2 tiles higher (closer to top-left corner)
         const doorY = Math.floor(this.roomHeight / 2) - 2;
@@ -1268,7 +1373,7 @@ class HabboGame {
         });
 
         // Draw bubbles from oldest (top) to newest (bottom)
-        let currentY = pos.y - 85 - totalHeight;
+        let currentY = pos.y - (85 * this.scale) - totalHeight;
 
         bubblesData.reverse().forEach((data, index) => {
             const { bubble, lines, width: bubbleWidth, height: bubbleHeight } = data;
@@ -1338,23 +1443,23 @@ class HabboGame {
             // Use custom character sprites
             const sprite = this.getCustomSprite(this.player.direction);
             if (sprite) {
-                const scale = 0.08; // Even smaller scale for custom sprites
-                const drawWidth = sprite.width * scale;
-                const drawHeight = sprite.height * scale;
+                const spriteScale = 0.08 * this.scale; // Scale with canvas
+                const drawWidth = sprite.width * spriteScale;
+                const drawHeight = sprite.height * spriteScale;
 
                 this.ctx.drawImage(
                     sprite,
                     pos.x - drawWidth / 2,
-                    pos.y - drawHeight + 30,  // Offset down more to touch the tile
+                    pos.y - drawHeight + (30 * this.scale),  // Offset down more to touch the tile
                     drawWidth,
                     drawHeight
                 );
             }
         } else {
             // Fallback to simple shape if no character selected
-            const charHeight = 60;
-            const charWidth = 20;
-            const offsetY = 8; // Same offset for consistency
+            const charHeight = 60 * this.scale;
+            const charWidth = 20 * this.scale;
+            const offsetY = 8 * this.scale; // Same offset for consistency
 
             this.ctx.fillStyle = '#333333';
             this.ctx.beginPath();
@@ -1382,7 +1487,7 @@ class HabboGame {
         }
 
         // Draw name tag under the character
-        this.drawNameTag(this.player.name, pos.x, pos.y + 35);
+        this.drawNameTag(this.player.name, pos.x, pos.y + (35 * this.scale));
     }
 
     render() {
@@ -1397,6 +1502,11 @@ class HabboGame {
                 const tileColor = (x + y) % 2 === 0 ? '#F0F0F0' : '#E0E0E0';
                 this.drawTile(x, y, tileColor);
             }
+        }
+
+        // Draw overlay in background layer if set
+        if (this.overlayLayer === 'background') {
+            this.drawOverlay();
         }
 
         // Draw the door entrance
@@ -1444,6 +1554,11 @@ class HabboGame {
                 this.drawNPC(char.npc, char.x, char.y);
                 this.drawNPCSpeechBubbles(char.npc, char.x, char.y);
             }
+        }
+
+        // Draw overlay in foreground layer if set
+        if (this.overlayLayer === 'foreground') {
+            this.drawOverlay();
         }
     }
 }
@@ -1544,4 +1659,25 @@ function toggleAllCharactersVisibility() {
 function toggleSidePanel() {
     const panel = document.getElementById('sidePanel');
     panel.classList.toggle('collapsed');
+}
+
+// Overlay control functions
+function toggleOverlay() {
+    if (!gameInstance) return;
+    const checkbox = document.getElementById('showOverlay');
+    gameInstance.showOverlay = checkbox.checked;
+    gameInstance.render();
+}
+
+function updateOverlayOpacity(value) {
+    if (!gameInstance) return;
+    gameInstance.overlayOpacity = value / 100;
+    document.getElementById('opacityValue').textContent = value + '%';
+    gameInstance.render();
+}
+
+function updateOverlayLayer(layer) {
+    if (!gameInstance) return;
+    gameInstance.overlayLayer = layer;
+    gameInstance.render();
 }
