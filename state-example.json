@@ -1,45 +1,43 @@
 {
+  "map": {
+    "id": "main-plaza",
+    "description": "The bustling central plaza where citizens gather to discuss and debate"
+  },
   "characters": {
     "char-001": {
       "name": "Alice",
-      "actions": [
-        {
-          "type": "move"
-        },
-        {
-          "type": "say",
-          "content": "Hello everyone!"
-        },
-        {
-          "type": "nothing"
-        }
-      ]
+      "action": {
+        "type": "say",
+        "content": "Hello everyone!"
+      }
     },
     "char-002": {
       "name": "Bob",
-      "actions": [
-        {
-          "type": "speak_to",
-          "target": "char-001",
-          "content": "Hello Alice!"
-        },
-        {
-          "type": "say",
-          "content": "Let's party!"
-        },
-        {
-          "type": "leave",
-          "content": "I'm going home"
-        }
-      ]
+      "action": {
+        "type": "speak_to",
+        "target": "char-001",
+        "content": "Hello Alice!"
+      }
     },
     "char-003": {
       "name": "Charlie",
-      "actions": [
-        {
-          "type": "move"
-        }
-      ]
+      "action": {
+        "type": "move"
+      }
+    },
+    "char-004": {
+      "name": "Diana",
+      "action": {
+        "type": "enter",
+        "content": "Good morning everyone!"
+      }
+    },
+    "char-005": {
+      "name": "Edward",
+      "action": {
+        "type": "leave",
+        "content": "See you later!"
+      }
     }
   }
 }

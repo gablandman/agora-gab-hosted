@@ -216,12 +216,11 @@ class HabboGame {
                 this.createNPC(charId, charData.name);
             }
 
-            // Get the last action (if any)
-            if (charData.actions && charData.actions.length > 0) {
-                const lastAction = charData.actions[charData.actions.length - 1];
+            // Get the action (if any)
+            if (charData.action) {
                 actionsToExecute.push({
                     charId,
-                    action: lastAction,
+                    action: charData.action,
                     name: charData.name
                 });
             }
