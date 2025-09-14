@@ -172,26 +172,92 @@ h1 {
     transform: translateY(0);
 }
 
-.character-selector {
-    background: #f9f9f9;
-    border: 2px solid #e0e0e0;
-    border-radius: 10px;
-    padding: 15px;
-    margin-bottom: 20px;
+/* Side Panel Styles */
+.side-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 300px;
+    height: 100vh;
+    background: white;
+    box-shadow: -2px 0 10px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s ease;
+    z-index: 1000;
+    overflow-y: auto;
+    transform: translateX(0);
+}
+
+.side-panel.collapsed {
+    transform: translateX(250px);
+    background: transparent;
+    box-shadow: none;
+}
+
+.toggle-panel-btn {
+    position: absolute;
+    left: 10px;
+    top: 10px;
+    width: 30px;
+    height: 30px;
+    background: #f0f0f0;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
     display: flex;
     align-items: center;
-    gap: 15px;
     justify-content: center;
+    transition: all 0.3s ease;
+    z-index: 10;
 }
 
-.character-selector h3 {
-    margin: 0;
-    font-size: 16px;
+.toggle-panel-btn:hover {
+    background: #f5f5f5;
+}
+
+.chevron {
+    font-size: 20px;
+    color: #666;
+    transition: transform 0.3s ease;
+}
+
+.side-panel.collapsed .chevron {
+    transform: rotate(180deg);
+}
+
+.panel-content {
+    padding: 50px 20px 20px 20px;
+    opacity: 1;
+    transition: opacity 0.2s ease;
+}
+
+.side-panel.collapsed .panel-content {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.panel-content h2 {
+    margin: 0 0 20px 0;
     color: #333;
+    font-size: 24px;
+    border-bottom: 2px solid #e0e0e0;
+    padding-bottom: 10px;
 }
 
-#characterSelect {
-    width: 200px;
+.panel-section {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: #f9f9f9;
+    border-radius: 8px;
+}
+
+.panel-section h3 {
+    margin: 0 0 15px 0;
+    font-size: 16px;
+    color: #555;
+}
+
+.panel-select {
+    width: 100%;
     padding: 8px;
     border: 2px solid #ddd;
     border-radius: 6px;
@@ -199,16 +265,18 @@ h1 {
     background: white;
     cursor: pointer;
     transition: border-color 0.3s;
+    margin-bottom: 10px;
 }
 
-#characterSelect:focus {
+.panel-select:focus {
     outline: none;
     border-color: #4A90E2;
 }
 
-#loadCharacterBtn {
-    padding: 8px 16px;
-    background: #4CAF50;
+.panel-btn {
+    width: 100%;
+    padding: 10px;
+    background: #4A90E2;
     color: white;
     border: none;
     border-radius: 6px;
@@ -216,36 +284,36 @@ h1 {
     font-weight: bold;
     cursor: pointer;
     transition: all 0.3s ease;
+    margin-bottom: 8px;
 }
 
-#loadCharacterBtn:hover {
-    background: #45a049;
+.panel-btn:hover {
+    background: #357ABD;
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
 }
 
-#loadCharacterBtn:active {
+.panel-btn:active {
     transform: translateY(0);
 }
 
-.test-btn {
-    padding: 8px 12px;
-    background: #6C63FF;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: bold;
+.checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
     cursor: pointer;
-    transition: all 0.3s ease;
 }
 
-.test-btn:hover {
-    background: #5750D6;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+.checkbox-label input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
 }
 
-.test-btn:active {
-    transform: translateY(0);
+.test-buttons {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
 }
+

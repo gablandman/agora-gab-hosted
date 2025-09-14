@@ -9,6 +9,7 @@ class HabboGame {
         this.tileHeight = 32;
 
         this.player = {
+            name: 'Player',
             x: 5,
             y: 5,
             targetX: 5,
@@ -48,6 +49,10 @@ class HabboGame {
         this.statePollingInterval = null;
         this.lastProcessedState = null;
         this.actionDelay = 500; // 0.5 seconds between character actions
+
+        // Visibility settings
+        this.hidePlayer = false;
+        this.hideAllCharacters = false;
 
         this.init();
     }
@@ -870,6 +875,44 @@ class HabboGame {
         return { x: npc.x, y: npc.y };
     }
 
+    drawNameTag(name, x, y) {
+        // Set up text style
+        this.ctx.font = 'bold 11px Arial';
+        this.ctx.textAlign = 'center';
+
+        // Measure text
+        const metrics = this.ctx.measureText(name);
+        const textWidth = metrics.width;
+        const padding = 4;
+        const bgWidth = textWidth + padding * 2;
+        const bgHeight = 16;
+
+        // Draw background with rounded corners
+        const bgX = x - bgWidth / 2;
+        const bgY = y - bgHeight / 2;
+        const radius = 3;
+
+        // Background shadow
+        this.ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        this.ctx.beginPath();
+        this.ctx.roundRect(bgX + 1, bgY + 1, bgWidth, bgHeight, radius);
+        this.ctx.fill();
+
+        // Background
+        this.ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+        this.ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+        this.ctx.lineWidth = 1;
+        this.ctx.beginPath();
+        this.ctx.roundRect(bgX, bgY, bgWidth, bgHeight, radius);
+        this.ctx.fill();
+        this.ctx.stroke();
+
+        // Draw text
+        this.ctx.fillStyle = '#333333';
+        this.ctx.fillText(name, x, y + 4); // Slight offset to center vertically
+        this.ctx.textAlign = 'left';
+    }
+
     drawNPC(npc, x, y) {
         const pos = this.isoToScreen(x, y);
 
@@ -920,13 +963,8 @@ class HabboGame {
             this.ctx.stroke();
         }
 
-        // Name label (always show)
-        this.ctx.fillStyle = '#333333';
-        this.ctx.font = '12px Arial';
-        this.ctx.textAlign = 'center';
-        const nameY = npc.sprites && npc.sprites['bot-left'] ? pos.y - 10 : pos.y - 20;
-        this.ctx.fillText(npc.name, pos.x, nameY);
-        this.ctx.textAlign = 'left';
+        // Name label with background (always show)
+        this.drawNameTag(npc.name, pos.x, pos.y + 35); // Position under feet
     }
 
     drawNPCSpeechBubbles(npc, x, y) {
@@ -1346,6 +1384,9 @@ class HabboGame {
             this.ctx.arc(pos.x + 3, pos.y - charHeight, 1.5, 0, Math.PI * 2);
             this.ctx.fill();
         }
+
+        // Draw name tag under the character
+        this.drawNameTag(this.player.name, pos.x, pos.y + 35);
     }
 
     render() {
@@ -1368,26 +1409,30 @@ class HabboGame {
         // Collect all characters with their positions for depth sorting
         const charactersToRender = [];
 
-        // Add player
-        const playerPos = this.getInterpolatedPosition();
-        charactersToRender.push({
-            type: 'player',
-            x: playerPos.x,
-            y: playerPos.y,
-            depth: playerPos.x + playerPos.y // Isometric depth calculation
-        });
+        // Add player if not hidden
+        if (!this.hideAllCharacters && !this.hidePlayer) {
+            const playerPos = this.getInterpolatedPosition();
+            charactersToRender.push({
+                type: 'player',
+                x: playerPos.x,
+                y: playerPos.y,
+                depth: playerPos.x + playerPos.y // Isometric depth calculation
+            });
+        }
 
-        // Add visible NPCs
-        for (const npc of Object.values(this.npcs)) {
-            if (npc.visible) {
-                const npcPos = this.getNPCInterpolatedPosition(npc);
-                charactersToRender.push({
-                    type: 'npc',
-                    npc: npc,
-                    x: npcPos.x,
-                    y: npcPos.y,
-                    depth: npcPos.x + npcPos.y // Isometric depth calculation
-                });
+        // Add visible NPCs if not hidden
+        if (!this.hideAllCharacters) {
+            for (const npc of Object.values(this.npcs)) {
+                if (npc.visible) {
+                    const npcPos = this.getNPCInterpolatedPosition(npc);
+                    charactersToRender.push({
+                        type: 'npc',
+                        npc: npc,
+                        x: npcPos.x,
+                        y: npcPos.y,
+                        depth: npcPos.x + npcPos.y // Isometric depth calculation
+                    });
+                }
             }
         }
 
@@ -1473,4 +1518,34 @@ function testNPCAction(actionType) {
             console.log('Nothing action executed (no visible effect)');
             break;
     }
+}
+
+// Toggle functions for visibility
+function togglePlayerVisibility() {
+    if (!gameInstance) return;
+    const checkbox = document.getElementById('hidePlayer');
+    gameInstance.hidePlayer = checkbox.checked;
+    gameInstance.render();
+}
+
+function toggleAllCharactersVisibility() {
+    if (!gameInstance) return;
+    const checkbox = document.getElementById('hideAllCharacters');
+    gameInstance.hideAllCharacters = checkbox.checked;
+
+    // If hiding all characters, also check the hide player checkbox
+    if (checkbox.checked) {
+        document.getElementById('hidePlayer').checked = true;
+        document.getElementById('hidePlayer').disabled = true;
+    } else {
+        document.getElementById('hidePlayer').disabled = false;
+    }
+
+    gameInstance.render();
+}
+
+// Toggle side panel
+function toggleSidePanel() {
+    const panel = document.getElementById('sidePanel');
+    panel.classList.toggle('collapsed');
 }
