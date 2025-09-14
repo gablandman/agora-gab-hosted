@@ -47,7 +47,7 @@ def create_agent(
             "temperature": temperature
         }
         
-        with httpx.Client() as client:
+        with httpx.Client(follow_redirects=True) as client:
             response = client.post(f"{BACKEND_URL.rstrip('/')}/api/agents", json=data)
         
         if response.status_code == 200:
@@ -74,7 +74,7 @@ def list_agents() -> str:
     try:
         import httpx
         
-        with httpx.Client() as client:
+        with httpx.Client(follow_redirects=True) as client:
             response = client.get(f"{BACKEND_URL.rstrip('/')}/api/agents")
         
         if response.status_code == 200:
@@ -107,7 +107,7 @@ def delete_agent(
     try:
         import httpx
         
-        with httpx.Client() as client:
+        with httpx.Client(follow_redirects=True) as client:
             response = client.delete(f"{BACKEND_URL.rstrip('/')}/api/agents/{agent_id}")
         
         if response.status_code in [200, 204]:
@@ -129,7 +129,7 @@ def search_agent(
     try:
         import httpx
         
-        with httpx.Client() as client:
+        with httpx.Client(follow_redirects=True) as client:
             response = client.get(f"{BACKEND_URL.rstrip('/')}/api/agents")
         
         if response.status_code == 200:
