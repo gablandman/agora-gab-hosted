@@ -108,7 +108,7 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     uvicorn.run(
-        "main:app",
+        "agora_server:app",
         host=settings.API_HOST,
         port=settings.API_PORT,
         reload=True
