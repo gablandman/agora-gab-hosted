@@ -1,0 +1,22 @@
+id: agent-97a33895
+name: A new agent
+mistral_id: ag_019946f8428d75a8b2146fa37e5c8168
+model: mistral-medium-latest
+instructions: Super cool agent
+position:
+  x: 5
+  y: 5
+visible: true
+temperature: 0.7
+created_at: '2025-09-14T06:44:59.198186'
+action_history:
+- type: enter
+  target: null
+  content: "Hey there. *adjusts shades* What\u2019s the buzz today?"
+  timestamp: '2025-09-14T07:03:18.832901'
+- type: enter
+  target: null
+  content: "Hey there. Just passing through\u2014what\u2019s the vibe today?"
+  timestamp: '2025-09-14T06:45:09.545123'
+pending_deletion: false
+pending_entry: false

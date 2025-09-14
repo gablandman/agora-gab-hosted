@@ -186,17 +186,67 @@ class HabboGame {
     }
 
     startStatePolling() {
-        // Poll state every 5 seconds
-        this.fetchAndProcessState(); // Initial fetch
-        this.statePollingInterval = setInterval(() => {
-            this.fetchAndProcessState();
-        }, 5000);
+        // Use WebSocket for real-time updates
+        this.connectWebSocket();
+    }
+
+    connectWebSocket() {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const wsUrl = `${protocol}//${window.location.host}/ws/state`;
+
+        this.ws = new WebSocket(wsUrl);
+
+        this.ws.onopen = () => {
+            console.log('WebSocket connected for real-time state updates');
+        };
+
+        this.ws.onmessage = async (event) => {
+            try {
+                const data = JSON.parse(event.data);
+
+                // Handle ping messages
+                if (data.type === 'ping') {
+                    // Just a keepalive, ignore
+                    return;
+                }
+
+                // Update turn number if displayed
+                const turnElement = document.getElementById('turnNumber');
+                if (turnElement && data.turn !== undefined) {
+                    turnElement.textContent = `Turn: ${data.turn}`;
+                }
+
+                if (data.characters) {
+                    console.log(`Received state update for turn ${data.turn}`);
+                    await this.processStateUpdate(data.characters);
+                }
+            } catch (error) {
+                console.error('Failed to process WebSocket message:', error);
+            }
+        };
+
+        this.ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        this.ws.onclose = () => {
+            console.log('WebSocket disconnected, attempting to reconnect...');
+            // Reconnect after 3 seconds
+            setTimeout(() => this.connectWebSocket(), 3000);
+        };
     }
 
     async fetchAndProcessState() {
+        // Fallback for manual fetch if needed
         try {
             const response = await fetch('/api/game/state');
             const state = await response.json();
+
+            // Update turn number if displayed
+            const turnElement = document.getElementById('turnNumber');
+            if (turnElement && state.turn !== undefined) {
+                turnElement.textContent = `Turn: ${state.turn}`;
+            }
 
             if (state.characters) {
                 await this.processStateUpdate(state.characters);
@@ -211,8 +261,8 @@ class HabboGame {
 
         // Process each character
         for (const [charId, charData] of Object.entries(characters)) {
-            // Create NPC if it doesn't exist
-            if (!this.npcs[charId]) {
+            // Create NPC if it doesn't exist (only for visible characters)
+            if (!this.npcs[charId] && charData.visible !== false) {
                 this.createNPC(charId, charData.name);
             }
 
@@ -1094,7 +1144,7 @@ class HabboGame {
 
         const pos = this.isoToScreen(x, y);
         const padding = 12; // Fixed padding
-        const maxWidth = 200;
+        const maxWidth = 300; // Increased from 200 to 300
         const fontSize = Math.max(18, 16 * this.scale) * this.bubbleSize; // Only scale font size
         const lineHeight = fontSize * 1.3; // Line height based on font size
         const bubbleSpacing = 5;
@@ -1365,7 +1415,7 @@ class HabboGame {
 
         const pos = this.isoToScreen(x, y);
         const padding = 12; // Fixed padding
-        const maxWidth = 200;
+        const maxWidth = 300; // Increased from 200 to 300
         const fontSize = Math.max(18, 16 * this.scale) * this.bubbleSize; // Only scale font size
         const lineHeight = fontSize * 1.3; // Line height based on font size
         const bubbleSpacing = 5;
@@ -1484,7 +1534,7 @@ class HabboGame {
         if (allBubbles.length === 0) return;
 
         const padding = 12;
-        const maxWidth = 200;
+        const maxWidth = 300; // Increased from 200 to 300
         const fontSize = Math.max(18, 16 * this.scale) * this.bubbleSize;
         const lineHeight = fontSize * 1.3;
         const bubbleSpacing = 5;

@@ -9,7 +9,7 @@ import uvicorn
 from pathlib import Path
 
 # Import our app modules
-from app.routers import agents, game
+from app.routers import agents, game, websocket
 from app.config import settings
 
 # Create FastAPI app
@@ -34,6 +34,7 @@ templates = Jinja2Templates(directory="templates")
 # Include API routers
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(game.router, prefix="/api/game", tags=["game"])
+app.include_router(websocket.router, tags=["websocket"])
 
 # Serve static files
 app.mount("/static", StaticFiles(directory="static"), name="static")

@@ -5,6 +5,8 @@ Your personality: {agent_instructions}
 Recent events:
 {recent_context}
 
+IMPORTANT: Keep your messages SHORT and CONCISE. Use 1-2 short sentences maximum. Be natural and conversational.
+
 Available actions:
 - say: Speak to everyone in the room (content: your message)
 - speak_to: Address someone specific (target: character name, content: your message)
@@ -19,7 +21,10 @@ Respond with ONLY a JSON object in this exact format:
 
 Examples:
 {{"type": "say", "content": "Hello everyone!"}}
-{{"type": "speak_to", "target": "Alice", "content": "How are you doing?"}}
+{{"type": "speak_to", "target": "Alice", "content": "How are you?"}}
+{{"type": "say", "content": "That's interesting. Tell me more."}}
 {{"type": "move"}}
 {{"type": "nothing"}}
+
+Remember: SHORT messages only! Maximum 1-2 brief sentences.
 """

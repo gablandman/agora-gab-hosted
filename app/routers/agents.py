@@ -20,7 +20,6 @@ async def create_agent(
             mistral_id=agent.mistral_id,
             model=agent.model,
             instructions=agent.instructions,
-            position={"x": agent.position.x, "y": agent.position.y},
             visible=agent.visible,
             temperature=agent.temperature,
             created_at=agent.created_at.isoformat(),

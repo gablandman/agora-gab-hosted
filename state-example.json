@@ -1,4 +1,5 @@
 {
+  "turn": 42,
   "map": {
     "id": "main-plaza",
     "description": "The bustling central plaza where citizens gather to discuss and debate"

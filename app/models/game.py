@@ -8,6 +8,7 @@ class Character(BaseModel):
     action: Optional[GameAction] = None
 
 class GameState(BaseModel):
+    turn: int = 0
     characters: Dict[str, Character]
     map: Optional[Dict[str, str]] = None
 

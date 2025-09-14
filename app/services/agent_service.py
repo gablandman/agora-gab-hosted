@@ -42,7 +42,9 @@ class AgentService:
             model=agent_data.model or settings.MISTRAL_MODEL,
             instructions=agent_data.instructions,
             temperature=agent_data.temperature or settings.MISTRAL_TEMPERATURE,
-            created_at=datetime.now()
+            created_at=datetime.now(),
+            visible=False,  # Start invisible
+            pending_entry=True  # Will enter on next turn
         )
 
         # Save to YAML
@@ -88,15 +90,6 @@ class AgentService:
         # Delete from storage
         return await self.storage.delete_agent(agent_id)
 
-    async def update_agent_position(self, agent_id: str, x: int, y: int) -> bool:
-        """Update agent position"""
-        agent_data = await self.storage.load_agent(agent_id)
-        if not agent_data:
-            return False
-
-        agent_data['position'] = {'x': x, 'y': y}
-        await self.storage.save_agent(agent_id, agent_data)
-        return True
 
     async def update_agent_visibility(self, agent_id: str, visible: bool) -> bool:
         """Update agent visibility"""

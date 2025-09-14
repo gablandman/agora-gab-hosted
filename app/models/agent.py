@@ -3,22 +3,18 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from .action import Action
 
-class Position(BaseModel):
-    x: int = 5
-    y: int = 5
-
 class Agent(BaseModel):
     id: str
     name: str
     mistral_id: Optional[str] = None
     model: str = "mistral-medium-latest"
     instructions: str
-    position: Position = Field(default_factory=Position)
-    visible: bool = True
+    visible: bool = False  # Start invisible, will enter on next turn
     temperature: float = 0.7
     created_at: datetime = Field(default_factory=datetime.now)
     action_history: List[Action] = []
     pending_deletion: bool = False  # Mark agent for deletion after leave action
+    pending_entry: bool = True  # Mark agent to enter on next turn
 
     class Config:
         json_encoders = {
@@ -37,7 +33,6 @@ class AgentResponse(BaseModel):
     mistral_id: Optional[str]
     model: str
     instructions: str
-    position: Dict[str, int]
     visible: bool
     temperature: float
     created_at: str

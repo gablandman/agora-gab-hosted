@@ -76,6 +76,7 @@ class MistralService:
     async def generate_action(self, agent_data: Dict[str, Any], context: Dict[str, Any]) -> Optional[Dict[str, Any]]:
         """Generate an action for an agent based on context"""
         try:
+            print(f"    [Mistral] Generating action for {agent_data.get('name', 'unknown')}")
             # Build the prompt
             prompt = self._build_action_prompt(agent_data, context)
 
@@ -97,9 +98,11 @@ class MistralService:
             )
 
             if not response.choices:
+                print(f"    [Mistral] No response choices for {agent_data.get('name')}")
                 return None
 
             content = response.choices[0].message.content.strip()
+            print(f"    [Mistral] Raw response: {content[:100]}...")  # First 100 chars
 
             # Try to parse JSON response
             try:
@@ -112,15 +115,19 @@ class MistralService:
 
                     # Validate action type
                     if action_data.get('type') in [a.value for a in ActionType]:
+                        print(f"    [Mistral] Parsed action: {action_data.get('type')}")
                         return {
                             'type': action_data.get('type'),
                             'target': action_data.get('target'),
                             'content': action_data.get('content')
                         }
-            except json.JSONDecodeError:
-                pass
+                    else:
+                        print(f"    [Mistral] Invalid action type: {action_data.get('type')}")
+            except json.JSONDecodeError as e:
+                print(f"    [Mistral] Failed to parse JSON: {e}")
 
             # Fallback to a default action
+            print(f"    [Mistral] Using fallback action: nothing")
             return {
                 'type': ActionType.NOTHING.value,
                 'target': None,

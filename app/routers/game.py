@@ -17,13 +17,17 @@ async def execute_turn(
     game_service: GameService = Depends(get_game_service)
 ):
     """Execute one game turn"""
-    return await game_service.execute_turn()
+    print("[API] Manual turn execution requested")
+    result = await game_service.execute_turn()
+    print(f"[API] Turn execution completed")
+    return result
 
 @router.post("/start")
 async def start_game(
     game_service: GameService = Depends(get_game_service)
 ):
     """Start automatic turn execution"""
+    print("[API] Starting automatic turn execution")
     await game_service.start_turn_loop()
     return {"message": "Game started", "turn_interval": 10}
 
