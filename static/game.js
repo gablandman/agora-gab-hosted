@@ -557,19 +557,15 @@ class HabboGame {
         document.addEventListener('keydown', (e) => {
             switch(e.key) {
                 case 'ArrowUp':
-                case 'w':
                     this.movePlayer(0, -1);
                     break;
                 case 'ArrowDown':
-                case 's':
                     this.movePlayer(0, 1);
                     break;
                 case 'ArrowLeft':
-                case 'a':
                     this.movePlayer(-1, 0);
                     break;
                 case 'ArrowRight':
-                case 'd':
                     this.movePlayer(1, 0);
                     break;
                 case '1':
@@ -1019,7 +1015,7 @@ class HabboGame {
             totalHeight += bubbleHeight + bubbleSpacing;
         });
 
-        let currentY = pos.y - 120 - totalHeight;
+        let currentY = pos.y - 85 - totalHeight;
 
         bubblesData.reverse().forEach((data, index) => {
             const { bubble, lines, width: bubbleWidth, height: bubbleHeight } = data;
@@ -1272,7 +1268,7 @@ class HabboGame {
         });
 
         // Draw bubbles from oldest (top) to newest (bottom)
-        let currentY = pos.y - 120 - totalHeight;
+        let currentY = pos.y - 85 - totalHeight;
 
         bubblesData.reverse().forEach((data, index) => {
             const { bubble, lines, width: bubbleWidth, height: bubbleHeight } = data;
