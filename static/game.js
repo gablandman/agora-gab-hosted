@@ -1480,6 +1480,155 @@ class HabboGame {
         this.ctx.globalAlpha = 1;
     }
 
+    drawAllSpeechBubbles(allBubbles) {
+        if (allBubbles.length === 0) return;
+
+        const padding = 12;
+        const maxWidth = 200;
+        const fontSize = Math.max(18, 16 * this.scale) * this.bubbleSize;
+        const lineHeight = fontSize * 1.3;
+        const bubbleSpacing = 5;
+        const radius = 10;
+
+        // Process all bubbles and calculate their dimensions
+        const processedBubbles = [];
+
+        for (const charBubble of allBubbles) {
+            const pos = this.isoToScreen(charBubble.x, charBubble.y);
+
+            // Process each bubble for this character
+            for (const bubble of charBubble.bubbles) {
+                this.ctx.font = `${fontSize}px Arial`;
+                const words = bubble.text.split(' ');
+                const lines = [];
+                let currentLine = '';
+
+                // Word wrap
+                for (const word of words) {
+                    const testLine = currentLine ? `${currentLine} ${word}` : word;
+                    const metrics = this.ctx.measureText(testLine);
+                    if (metrics.width > maxWidth && currentLine) {
+                        lines.push(currentLine);
+                        currentLine = word;
+                    } else {
+                        currentLine = testLine;
+                    }
+                }
+                lines.push(currentLine);
+
+                // Calculate bubble dimensions
+                const bubbleHeight = lines.length * lineHeight + padding * 2;
+                let bubbleWidth = 0;
+                for (const line of lines) {
+                    const metrics = this.ctx.measureText(line);
+                    bubbleWidth = Math.max(bubbleWidth, metrics.width);
+                }
+                bubbleWidth += padding * 2;
+
+                processedBubbles.push({
+                    charX: pos.x,
+                    charY: pos.y,
+                    bubble: bubble,
+                    lines: lines,
+                    width: bubbleWidth,
+                    height: bubbleHeight,
+                    isNewest: bubble === charBubble.bubbles[charBubble.bubbles.length - 1]
+                });
+            }
+        }
+
+        // Sort bubbles by character Y position (higher Y = closer to camera = drawn last)
+        processedBubbles.sort((a, b) => a.charY - b.charY);
+
+        // Track occupied regions to avoid overlaps
+        const occupiedRegions = [];
+
+        // Draw each bubble
+        for (const data of processedBubbles) {
+            const baseX = data.charX - data.width / 2;
+            let baseY = data.charY - (85 * this.scale) - data.height;
+
+            // Check for overlaps and adjust Y position if needed
+            let adjusted = true;
+            while (adjusted) {
+                adjusted = false;
+                for (const region of occupiedRegions) {
+                    // Check if bubbles overlap horizontally
+                    const horizontalOverlap = !(baseX + data.width < region.x || baseX > region.x + region.width);
+
+                    // Check if bubbles overlap vertically
+                    const verticalOverlap = !(baseY + data.height < region.y || baseY > region.y + region.height);
+
+                    if (horizontalOverlap && verticalOverlap) {
+                        // Move this bubble up above the overlapping one
+                        baseY = region.y - data.height - bubbleSpacing;
+                        adjusted = true;
+                        break;
+                    }
+                }
+            }
+
+            // Record this bubble's position
+            occupiedRegions.push({
+                x: baseX,
+                y: baseY,
+                width: data.width,
+                height: data.height
+            });
+
+            // Calculate fade based on age
+            const age = Date.now() - data.bubble.timestamp;
+            const fadeStart = this.bubbleDuration - 1000;
+            let opacity = 1;
+            if (age > fadeStart) {
+                opacity = Math.max(0, 1 - ((age - fadeStart) / 1000));
+            }
+
+            this.ctx.globalAlpha = opacity;
+
+            // Draw bubble background
+            this.ctx.fillStyle = 'white';
+            this.ctx.strokeStyle = '#333';
+            this.ctx.lineWidth = 2;
+
+            // Draw rounded rectangle bubble
+            this.ctx.beginPath();
+            this.ctx.moveTo(baseX + radius, baseY);
+            this.ctx.lineTo(baseX + data.width - radius, baseY);
+            this.ctx.quadraticCurveTo(baseX + data.width, baseY, baseX + data.width, baseY + radius);
+            this.ctx.lineTo(baseX + data.width, baseY + data.height - radius);
+            this.ctx.quadraticCurveTo(baseX + data.width, baseY + data.height, baseX + data.width - radius, baseY + data.height);
+
+            // Add tail for newest bubble
+            if (data.isNewest) {
+                this.ctx.lineTo(data.charX + 10, baseY + data.height);
+                this.ctx.lineTo(data.charX, baseY + data.height + 10);
+                this.ctx.lineTo(data.charX - 10, baseY + data.height);
+            }
+
+            this.ctx.lineTo(baseX + radius, baseY + data.height);
+            this.ctx.quadraticCurveTo(baseX, baseY + data.height, baseX, baseY + data.height - radius);
+            this.ctx.lineTo(baseX, baseY + radius);
+            this.ctx.quadraticCurveTo(baseX, baseY, baseX + radius, baseY);
+            this.ctx.closePath();
+
+            this.ctx.fill();
+            this.ctx.stroke();
+
+            // Draw text
+            this.ctx.fillStyle = '#000';
+            this.ctx.font = `${fontSize}px Arial`;
+            data.lines.forEach((line, lineIndex) => {
+                const textX = baseX + padding;
+                const textY = baseY + padding + lineIndex * lineHeight + fontSize * 0.75;
+                this.ctx.fillText(line, textX, textY);
+            });
+        }
+
+        // Reset global alpha
+        this.ctx.globalAlpha = 1;
+    }
+
     drawCharacter(x, y) {
         const pos = this.isoToScreen(x, y);
 
@@ -1588,14 +1737,12 @@ class HabboGame {
         // Sort by depth (lower depth = further back, drawn first)
         charactersToRender.sort((a, b) => a.depth - b.depth);
 
-        // Draw characters in sorted order (without name tags)
+        // Draw characters in sorted order (without speech bubbles)
         for (const char of charactersToRender) {
             if (char.type === 'player') {
                 this.drawCharacter(char.x, char.y);
-                this.drawSpeechBubbles(char.x, char.y);
             } else {
                 this.drawNPC(char.npc, char.x, char.y);
-                this.drawNPCSpeechBubbles(char.npc, char.x, char.y);
             }
         }
 
@@ -1607,6 +1754,30 @@ class HabboGame {
                 this.drawNameTag(name, pos.x, pos.y + (35 * this.scale));
             }
         }
+
+        // Collect all speech bubbles with their positions
+        const allBubbles = [];
+        for (const char of charactersToRender) {
+            if (char.type === 'player' && this.speechBubbles.length > 0) {
+                allBubbles.push({
+                    type: 'player',
+                    x: char.x,
+                    y: char.y,
+                    bubbles: this.speechBubbles
+                });
+            } else if (char.type === 'npc' && char.npc.speechBubbles.length > 0) {
+                allBubbles.push({
+                    type: 'npc',
+                    x: char.x,
+                    y: char.y,
+                    npc: char.npc,
+                    bubbles: char.npc.speechBubbles
+                });
+            }
+        }
+
+        // Draw all speech bubbles with collision detection (after name tags so they appear on top)
+        this.drawAllSpeechBubbles(allBubbles);
 
         // Draw overlay in foreground layer if set
         if (this.overlayLayer === 'foreground') {
