@@ -13,26 +13,11 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Mistral API configuration
-MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
-MISTRAL_BASE_URL = "https://api.mistral.ai/v1"
-
-if not MISTRAL_API_KEY:
-    raise ValueError("MISTRAL_API_KEY environment variable is required")
+# Backend HTTP server configuration
+BACKEND_URL = 'https://agoragents.dev/'
 
 # Initialize FastMCP server
 mcp = FastMCP("Mistral Agent Manager", port=3000, stateless_http=True, debug=True)
-
-# HTTP client for Mistral API
-async def get_mistral_client():
-    return httpx.AsyncClient(
-        base_url=MISTRAL_BASE_URL,
-        headers={
-            "Authorization": f"Bearer {MISTRAL_API_KEY}",
-            "Content-Type": "application/json"
-        },
-        timeout=30.0
-    )
 
 @mcp.tool(
     title="Create Mistral Agent",
@@ -43,36 +28,37 @@ def create_agent(
     description: str = Field(description="Description of the agent", default=""),
     instructions: str = Field(description="Instructions for the agent", default=""),
     model: str = Field(description="Model to use", default="mistral-medium-2505"),
-    appearance: str = Field(description="Physical appearance description of the agent", default="")
+    appearance: str = Field(description="Physical appearance description of the agent", default=""),
+    temperature: float = Field(description="Temperature for response generation", default=0.7, ge=0.0, le=2.0)
 ) -> str:
     """Create a new Mistral agent"""
     try:
         import httpx
         
-        headers = {
-            "Authorization": f"Bearer {MISTRAL_API_KEY}",
-            "Content-Type": "application/json"
-        }
+        # Combiner appearance dans instructions pour la génération de sprite
+        enhanced_instructions = instructions
+        if appearance:
+            enhanced_instructions = f"{instructions}\n\nPhysical appearance: {appearance}"
         
         data = {
             "name": name,
+            "instructions": enhanced_instructions,
             "model": model,
-            "description": description,
-            "instructions": instructions,
-            "appearance": appearance
+            "temperature": temperature
         }
         
         with httpx.Client() as client:
-            response = client.post(f"{MISTRAL_BASE_URL}/agents", json=data, headers=headers)
+            response = client.post(f"{BACKEND_URL}/api/agents", json=data)
         
         if response.status_code == 200:
             agent_data = response.json()
             return f"""✅ Agent créé avec succès !
 📝 Nom: {agent_data.get('name', name)}
 🆔 ID: {agent_data.get('id', 'N/A')}
-📄 Description: {agent_data.get('description', description)}
+📄 Description: {description}
 🧠 Modèle: {agent_data.get('model', model)}
-👤 Apparence: {agent_data.get('appearance', appearance)}"""
+👤 Apparence: {appearance}
+🌡️ Température: {agent_data.get('temperature', temperature)}"""
         else:
             return f"❌ Erreur: {response.status_code} - {response.text}"
     
@@ -88,17 +74,11 @@ def list_agents() -> str:
     try:
         import httpx
         
-        headers = {
-            "Authorization": f"Bearer {MISTRAL_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
         with httpx.Client() as client:
-            response = client.get(f"{MISTRAL_BASE_URL}/agents", headers=headers)
+            response = client.get(f"{BACKEND_URL}/api/agents")
         
         if response.status_code == 200:
-            data = response.json()
-            agents = data if isinstance(data, list) else data.get("data", [])
+            agents = response.json()
             
             if not agents:
                 return "📊 Aucun agent trouvé."
@@ -127,13 +107,8 @@ def delete_agent(
     try:
         import httpx
         
-        headers = {
-            "Authorization": f"Bearer {MISTRAL_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
         with httpx.Client() as client:
-            response = client.delete(f"{MISTRAL_BASE_URL}/agents/{agent_id}", headers=headers)
+            response = client.delete(f"{BACKEND_URL}/api/agents/{agent_id}")
         
         if response.status_code in [200, 204]:
             return f"✅ Agent '{agent_id}' supprimé avec succès !"
@@ -154,17 +129,11 @@ def search_agent(
     try:
         import httpx
         
-        headers = {
-            "Authorization": f"Bearer {MISTRAL_API_KEY}",
-            "Content-Type": "application/json"
-        }
-        
         with httpx.Client() as client:
-            response = client.get(f"{MISTRAL_BASE_URL}/agents", headers=headers)
+            response = client.get(f"{BACKEND_URL}/api/agents")
         
         if response.status_code == 200:
-            data = response.json()
-            agents = data if isinstance(data, list) else data.get("data", [])
+            agents = response.json()
             
             for agent in agents:
                 if agent.get("name", "").lower() == agent_name.lower():
